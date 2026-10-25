@@ -1,259 +1,210 @@
+using AtlasTaskFlow.Data;
 using AtlasTaskFlow.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace AtlasTaskFlow.Services;
 
 /// <summary>
-/// In-memory data store for Sprint 4. It keeps the same shape as the planned Azure SQL schema so it can be
-/// swapped for Entity Framework Core when persistence arrives. Data resets when the app restarts.
+/// Reads and writes Atlas data through Entity Framework Core. One store (and one DbContext) is created per web
+/// request.
+///
+/// Writes are staged and saved together by <see cref="SaveChanges"/>, so one user action (for example "submit work":
+/// files, a comment, a status change and notifications) is saved in a single database transaction. The exceptions
+/// are methods that create a record whose id the caller needs straight away; those save immediately.
 /// </summary>
 public class AtlasStore
 {
-    private readonly object _gate = new();
-    private readonly List<User> _users = new();
-    private readonly List<Team> _teams = new();
-    private readonly List<TeamMember> _members = new();
-    private readonly List<Project> _projects = new();
-    private readonly List<TaskItem> _tasks = new();
-    private readonly List<Comment> _comments = new();
-    private readonly List<Attachment> _attachments = new();
-    private readonly List<Notification> _notifications = new();
-    private readonly List<ActivityEntry> _activity = new();
-    private int _nextId = 1;
+    private readonly AtlasDbContext _db;
 
-    private int NextId() => _nextId++;
+    public AtlasStore(AtlasDbContext db) => _db = db;
+
+    /// <summary>Saves every staged change in one transaction.</summary>
+    public void SaveChanges() => _db.SaveChanges();
 
     // ---------- Reads ----------
 
-    public IReadOnlyList<User> GetUsers() { lock (_gate) return _users.ToList(); }
+    public IReadOnlyList<User> GetUsers() => _db.Users.OrderBy(u => u.UserId).ToList();
 
-    public User? GetUser(int userId) { lock (_gate) return _users.FirstOrDefault(u => u.UserId == userId); }
+    public User? GetUser(int userId) => _db.Users.Find(userId);
 
-    public Team? GetTeam(int teamId) { lock (_gate) return _teams.FirstOrDefault(t => t.TeamId == teamId); }
+    public Team? GetTeam(int teamId) => _db.Teams.Find(teamId);
 
-    public IReadOnlyList<Team> GetTeamsForUser(int userId)
-    {
-        lock (_gate)
-        {
-            var teamIds = _members.Where(m => m.UserId == userId).Select(m => m.TeamId).ToHashSet();
-            return _teams.Where(t => teamIds.Contains(t.TeamId)).OrderBy(t => t.TeamName).ToList();
-        }
-    }
+    public IReadOnlyList<Team> GetTeamsForUser(int userId) =>
+        _db.Teams.Where(t => _db.TeamMembers.Any(m => m.TeamId == t.TeamId && m.UserId == userId))
+            .OrderBy(t => t.TeamName).ToList();
 
-    public TeamMember? GetMembership(int teamId, int userId)
-    {
-        lock (_gate) return _members.FirstOrDefault(m => m.TeamId == teamId && m.UserId == userId);
-    }
+    public TeamMember? GetMembership(int teamId, int userId) =>
+        _db.TeamMembers.FirstOrDefault(m => m.TeamId == teamId && m.UserId == userId);
 
-    public IReadOnlyList<TeamMember> GetTeamMembers(int teamId)
-    {
-        lock (_gate) return _members.Where(m => m.TeamId == teamId).ToList();
-    }
+    public IReadOnlyList<TeamMember> GetTeamMembers(int teamId) =>
+        _db.TeamMembers.Where(m => m.TeamId == teamId).OrderBy(m => m.TeamMemberId).ToList();
 
-    public IReadOnlyList<Project> GetProjects(int teamId)
-    {
-        lock (_gate)
-        {
-            return _projects.Where(p => p.TeamId == teamId)
-                .OrderByDescending(p => p.IsDefaultTasksProject).ThenBy(p => p.ProjectName).ToList();
-        }
-    }
+    public IReadOnlyList<Project> GetProjects(int teamId) =>
+        _db.Projects.Where(p => p.TeamId == teamId)
+            .OrderByDescending(p => p.IsDefaultTasksProject).ThenBy(p => p.ProjectName).ToList();
 
-    public Project? GetProject(int projectId) { lock (_gate) return _projects.FirstOrDefault(p => p.ProjectId == projectId); }
+    public Project? GetProject(int projectId) => _db.Projects.Find(projectId);
 
-    public IReadOnlyList<TaskItem> GetTasksForTeam(int teamId)
-    {
-        lock (_gate)
-        {
-            var projectIds = _projects.Where(p => p.TeamId == teamId).Select(p => p.ProjectId).ToHashSet();
-            return _tasks.Where(t => projectIds.Contains(t.ProjectId)).OrderBy(t => t.DueDate).ToList();
-        }
-    }
+    public IReadOnlyList<TaskItem> GetTasksForTeam(int teamId) =>
+        TasksWithAssignees()
+            .Where(t => _db.Projects.Any(p => p.ProjectId == t.ProjectId && p.TeamId == teamId))
+            .OrderBy(t => t.DueDate).ThenBy(t => t.TaskId).ToList();
 
-    public TaskItem? GetTask(int taskId) { lock (_gate) return _tasks.FirstOrDefault(t => t.TaskId == taskId); }
+    public TaskItem? GetTask(int taskId) => TasksWithAssignees().FirstOrDefault(t => t.TaskId == taskId);
 
     /// <summary>Returns the team that owns a task, so callers can enforce team isolation.</summary>
-    public int? GetTeamIdForTask(int taskId)
-    {
-        lock (_gate)
-        {
-            var task = _tasks.FirstOrDefault(t => t.TaskId == taskId);
-            return task is null ? null : _projects.FirstOrDefault(p => p.ProjectId == task.ProjectId)?.TeamId;
-        }
-    }
+    public int? GetTeamIdForTask(int taskId) =>
+        _db.Tasks.Where(t => t.TaskId == taskId)
+            .Join(_db.Projects, t => t.ProjectId, p => p.ProjectId, (t, p) => (int?)p.TeamId)
+            .FirstOrDefault();
 
-    public IReadOnlyList<Comment> GetComments(int taskId)
-    {
-        lock (_gate) return _comments.Where(c => c.TaskId == taskId).OrderBy(c => c.CreatedAt).ToList();
-    }
+    public IReadOnlyList<Comment> GetComments(int taskId) =>
+        _db.Comments.Where(c => c.TaskId == taskId).OrderBy(c => c.CreatedAt).ThenBy(c => c.CommentId).ToList();
 
-    public IReadOnlyList<Attachment> GetAttachments(int taskId)
-    {
-        lock (_gate) return _attachments.Where(a => a.TaskId == taskId).OrderBy(a => a.UploadedAt).ToList();
-    }
+    /// <summary>A task's files without their contents, which are only loaded for a download.</summary>
+    public IReadOnlyList<Attachment> GetAttachments(int taskId) =>
+        _db.Attachments.AsNoTracking().Where(a => a.TaskId == taskId).OrderBy(a => a.UploadedAt).ThenBy(a => a.AttachmentId)
+            .Select(a => new Attachment
+            {
+                AttachmentId = a.AttachmentId,
+                TaskId = a.TaskId,
+                UploadedByUserId = a.UploadedByUserId,
+                FileName = a.FileName,
+                ContentType = a.ContentType,
+                FileType = a.FileType,
+                UploadedAt = a.UploadedAt
+            })
+            .ToList();
 
-    public Attachment? GetAttachment(int attachmentId)
-    {
-        lock (_gate) return _attachments.FirstOrDefault(a => a.AttachmentId == attachmentId);
-    }
+    public Attachment? GetAttachment(int attachmentId) => _db.Attachments.AsNoTracking().FirstOrDefault(a => a.AttachmentId == attachmentId);
 
-    public IReadOnlyList<Notification> GetNotifications(int userId, int teamId)
-    {
-        lock (_gate)
-        {
-            return _notifications.Where(n => n.UserId == userId && n.TeamId == teamId)
-                .OrderByDescending(n => n.CreatedAt).ToList();
-        }
-    }
+    public IReadOnlyList<Notification> GetNotifications(int userId, int teamId) =>
+        _db.Notifications.Where(n => n.UserId == userId && n.TeamId == teamId)
+            .OrderByDescending(n => n.CreatedAt).ThenByDescending(n => n.NotificationId).ToList();
 
-    public int GetUnreadCount(int userId, int teamId)
-    {
-        lock (_gate) return _notifications.Count(n => n.UserId == userId && n.TeamId == teamId && !n.IsRead);
-    }
+    public int GetUnreadCount(int userId, int teamId) =>
+        _db.Notifications.Count(n => n.UserId == userId && n.TeamId == teamId && !n.IsRead);
 
-    public IReadOnlyList<ActivityEntry> GetRecentActivity(int teamId, int count)
-    {
-        lock (_gate) return _activity.Where(a => a.TeamId == teamId).OrderByDescending(a => a.CreatedAt).Take(count).ToList();
-    }
+    public IReadOnlyList<ActivityEntry> GetRecentActivity(int teamId, int count) =>
+        _db.ActivityEntries.Where(a => a.TeamId == teamId)
+            .OrderByDescending(a => a.CreatedAt).ThenByDescending(a => a.ActivityEntryId).Take(count).ToList();
 
-    // ---------- Writes ----------
+    private IQueryable<TaskItem> TasksWithAssignees() => _db.Tasks.Include(t => t.Assignees);
+
+    // ---------- Writes that save immediately (the caller needs the new id) ----------
 
     public User AddUser(string fullName, string email)
     {
-        lock (_gate)
-        {
-            var user = new User { UserId = NextId(), FullName = fullName, Email = email };
-            _users.Add(user);
-            return user;
-        }
+        var user = new User { FullName = fullName, Email = email };
+        _db.Users.Add(user);
+        _db.SaveChanges();
+        return user;
     }
 
     /// <summary>Creates a team, makes the creator its leader, and adds the default "Tasks" project (FR-2.1).</summary>
     public Team CreateTeam(string teamName, int createdByUserId)
     {
-        lock (_gate)
+        var team = new Team { TeamName = teamName, CreatedByUserId = createdByUserId };
+        _db.Teams.Add(team);
+        _db.SaveChanges();
+
+        _db.TeamMembers.Add(new TeamMember { TeamId = team.TeamId, UserId = createdByUserId, Role = TeamRole.Leader });
+        _db.Projects.Add(new Project
         {
-            var team = new Team { TeamId = NextId(), TeamName = teamName, CreatedByUserId = createdByUserId };
-            _teams.Add(team);
-            _members.Add(new TeamMember { TeamMemberId = NextId(), TeamId = team.TeamId, UserId = createdByUserId, Role = TeamRole.Leader });
-            _projects.Add(new Project
-            {
-                ProjectId = NextId(),
-                TeamId = team.TeamId,
-                ProjectName = "Tasks",
-                Description = "General tasks that don't belong to a specific project.",
-                IsDefaultTasksProject = true
-            });
-            return team;
-        }
+            TeamId = team.TeamId,
+            ProjectName = "Tasks",
+            Description = "General tasks that don't belong to a specific project.",
+            IsDefaultTasksProject = true
+        });
+        _db.SaveChanges();
+        return team;
     }
 
     public TeamMember AddMember(int teamId, int userId, TeamRole role)
     {
-        lock (_gate)
-        {
-            var member = new TeamMember { TeamMemberId = NextId(), TeamId = teamId, UserId = userId, Role = role };
-            _members.Add(member);
-            return member;
-        }
+        var member = new TeamMember { TeamId = teamId, UserId = userId, Role = role };
+        _db.TeamMembers.Add(member);
+        _db.SaveChanges();
+        return member;
     }
 
     public void SetManagerPermissions(int teamId, int userId, bool value)
     {
-        lock (_gate)
-        {
-            var member = _members.FirstOrDefault(m => m.TeamId == teamId && m.UserId == userId);
-            if (member is not null) member.HasManagerPermissions = value;
-        }
+        var member = GetMembership(teamId, userId);
+        if (member is null) return;
+        member.HasManagerPermissions = value;
+        _db.SaveChanges();
     }
 
     public Project AddProject(int teamId, string name, string? description)
     {
-        lock (_gate)
-        {
-            var project = new Project { ProjectId = NextId(), TeamId = teamId, ProjectName = name, Description = description };
-            _projects.Add(project);
-            return project;
-        }
+        var project = new Project { TeamId = teamId, ProjectName = name, Description = description };
+        _db.Projects.Add(project);
+        _db.SaveChanges();
+        return project;
     }
 
     public TaskItem AddTask(TaskItem task)
     {
-        lock (_gate)
-        {
-            task.TaskId = NextId();
-            _tasks.Add(task);
-            return task;
-        }
-    }
-
-    /// <summary>Runs a change against a task while holding the store lock.</summary>
-    public void UpdateTask(int taskId, Action<TaskItem> change)
-    {
-        lock (_gate)
-        {
-            var task = _tasks.First(t => t.TaskId == taskId);
-            change(task);
-        }
-    }
-
-    public void DeleteTask(int taskId)
-    {
-        lock (_gate)
-        {
-            _tasks.RemoveAll(t => t.TaskId == taskId);
-            _comments.RemoveAll(c => c.TaskId == taskId);
-            _attachments.RemoveAll(a => a.TaskId == taskId);
-            foreach (var n in _notifications.Where(n => n.TaskId == taskId)) n.TaskId = null;
-        }
-    }
-
-    public Comment AddComment(int taskId, int userId, string text)
-    {
-        lock (_gate)
-        {
-            var comment = new Comment { CommentId = NextId(), TaskId = taskId, UserId = userId, MessageText = text };
-            _comments.Add(comment);
-            return comment;
-        }
-    }
-
-    public Attachment AddAttachment(Attachment attachment)
-    {
-        lock (_gate)
-        {
-            attachment.AttachmentId = NextId();
-            _attachments.Add(attachment);
-            return attachment;
-        }
-    }
-
-    public void AddNotification(int userId, int teamId, int? taskId, string message)
-    {
-        lock (_gate)
-        {
-            _notifications.Add(new Notification { NotificationId = NextId(), UserId = userId, TeamId = teamId, TaskId = taskId, Message = message });
-        }
+        _db.Tasks.Add(task);
+        _db.SaveChanges();
+        return task;
     }
 
     public void MarkNotificationRead(int notificationId, int userId)
     {
-        lock (_gate)
-        {
-            var n = _notifications.FirstOrDefault(x => x.NotificationId == notificationId && x.UserId == userId);
-            if (n is not null) n.IsRead = true;
-        }
+        var n = _db.Notifications.FirstOrDefault(x => x.NotificationId == notificationId && x.UserId == userId);
+        if (n is null) return;
+        n.IsRead = true;
+        _db.SaveChanges();
     }
 
     public void MarkAllNotificationsRead(int userId, int teamId)
     {
-        lock (_gate)
-        {
-            foreach (var n in _notifications.Where(n => n.UserId == userId && n.TeamId == teamId)) n.IsRead = true;
-        }
+        foreach (var n in _db.Notifications.Where(n => n.UserId == userId && n.TeamId == teamId && !n.IsRead))
+            n.IsRead = true;
+        _db.SaveChanges();
     }
 
-    public void AddActivity(int teamId, int? taskId, string message)
+    // ---------- Staged writes (saved by SaveChanges) ----------
+
+    /// <summary>Applies a change to a task. Saved with the next <see cref="SaveChanges"/>.</summary>
+    public void UpdateTask(int taskId, Action<TaskItem> change)
     {
-        lock (_gate) _activity.Add(new ActivityEntry { TeamId = teamId, TaskId = taskId, Message = message });
+        var task = GetTask(taskId) ?? throw new InvalidOperationException($"Task {taskId} was not found.");
+        change(task);
     }
+
+    /// <summary>
+    /// Removes a task. The database removes its assignees, comments and files (cascade); notifications and activity
+    /// lines are kept but no longer point at the task.
+    /// </summary>
+    public void DeleteTask(int taskId)
+    {
+        var task = GetTask(taskId);
+        if (task is null) return;
+
+        foreach (var n in _db.Notifications.Where(n => n.TaskId == taskId)) n.TaskId = null;
+        foreach (var a in _db.ActivityEntries.Where(a => a.TaskId == taskId)) a.TaskId = null;
+        _db.Tasks.Remove(task);
+    }
+
+    public Comment AddComment(int taskId, int userId, string text)
+    {
+        var comment = new Comment { TaskId = taskId, UserId = userId, MessageText = text };
+        _db.Comments.Add(comment);
+        return comment;
+    }
+
+    public Attachment AddAttachment(Attachment attachment)
+    {
+        _db.Attachments.Add(attachment);
+        return attachment;
+    }
+
+    public void AddNotification(int userId, int teamId, int? taskId, string message) =>
+        _db.Notifications.Add(new Notification { UserId = userId, TeamId = teamId, TaskId = taskId, Message = message });
+
+    public void AddActivity(int teamId, int? taskId, string message) =>
+        _db.ActivityEntries.Add(new ActivityEntry { TeamId = teamId, TaskId = taskId, Message = message });
 }

@@ -1,0 +1,25 @@
+@* Used by the error pages. It doesn't touch the database, so it still works when the database is the problem. *@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] · Atlas TaskFlow</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header>
+        <nav class="navbar atlas-nav">
+            <div class="container-xl">
+                <a class="navbar-brand d-flex align-items-center gap-2" href="~/">
+                    <span class="atlas-logo" aria-hidden="true">A</span> Atlas TaskFlow
+                </a>
+            </div>
+        </nav>
+    </header>
+    <main role="main" class="container-xl py-4">
+        @RenderBody()
+    </main>
+</body>
+</html>

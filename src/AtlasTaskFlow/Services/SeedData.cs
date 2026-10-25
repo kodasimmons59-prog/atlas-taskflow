@@ -3,11 +3,20 @@ using AtlasTaskFlow.Models;
 namespace AtlasTaskFlow.Services;
 
 /// <summary>
-/// Sample teams, people and tasks based on the Sprint 3 personas, so the app can be demonstrated
-/// before real sign-up and persistence exist. Due dates are relative to today so the calendar stays current.
+/// Sample teams, people and tasks based on the Sprint 3 personas, so the app can be demonstrated before real sign-up
+/// exists. They are added once, when the database is empty; after that the database keeps whatever users change.
+/// Due dates are relative to the day the sample data was added.
 /// </summary>
 public static class SeedData
 {
+    /// <summary>Adds the sample data if the database has no users yet. Returns true if it added anything.</summary>
+    public static bool EnsureSeeded(AtlasStore store, DateTime today)
+    {
+        if (store.GetUsers().Count > 0) return false;
+        Populate(store, today);
+        return true;
+    }
+
     public static void Populate(AtlasStore store, DateTime today)
     {
         var sarah = store.AddUser("Sarah Chen", "sarah@brightside.example");
@@ -67,20 +76,22 @@ public static class SeedData
         Task(store, holiday, leo, "Photograph seasonal pastries", null,
             today.AddDays(8), TaskItemStatus.NotAssigned);
         store.AddActivity(bakery.TeamId, null, "Leo Martinez created the Holiday Menu project.");
+        store.SaveChanges();
     }
 
     private static TaskItem Task(AtlasStore store, Project project, User createdBy, string title, string? description,
         DateTime due, TaskItemStatus status, params User[] assignees)
     {
-        return store.AddTask(new TaskItem
+        var task = new TaskItem
         {
             ProjectId = project.ProjectId,
             Title = title,
             Description = description,
             DueDate = due.Date,
             Status = status,
-            CreatedByUserId = createdBy.UserId,
-            AssigneeIds = assignees.Select(a => a.UserId).ToList()
-        });
+            CreatedByUserId = createdBy.UserId
+        };
+        task.SetAssignees(assignees.Select(a => a.UserId));
+        return store.AddTask(task);
     }
 }

@@ -1,6 +1,7 @@
 @model ErrorViewModel
 @{
     ViewData["Title"] = "Error";
+    Layout = "_PlainLayout";
 }
 <div class="empty-state my-5">
     <h1 class="h4">Something went wrong on our side</h1>
@@ -9,5 +10,5 @@
     {
         <p class="small text-body-secondary">Request ID: <code>@Model.RequestId</code></p>
     }
-    <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Back to dashboard</a>
+    <a class="btn btn-primary" href="~/">Back to dashboard</a>
 </div>

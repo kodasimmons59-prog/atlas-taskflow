@@ -9,21 +9,43 @@ namespace AtlasTaskFlow.Tests;
 
 /// <summary>
 /// Runs the real app in memory and drives it over HTTP, the same way a browser would.
-/// Each test gets a fresh app so sample data starts clean.
+/// Each test gets its own new SQL Server database, which the app migrates and fills with sample data on startup.
 /// </summary>
 public partial class AppIntegrationTests : IDisposable
 {
-    private readonly WebApplicationFactory<Program> _factory = new();
-    private readonly HttpClient _client;
+    private readonly TestDatabase _database = new();
+    private readonly List<IServiceScope> _scopes = new();
+    private WebApplicationFactory<Program> _factory;
+    private HttpClient _client;
 
     public AppIntegrationTests()
     {
-        _client = _factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
+        _factory = AtlasFactory.Create(_database.ConnectionString);
+        _client = NewClient();
     }
 
-    public void Dispose() => _factory.Dispose();
+    public void Dispose()
+    {
+        _scopes.ForEach(s => s.Dispose());
+        _factory.Dispose();
+        _database.Dispose();
+    }
 
-    private AtlasStore Store => _factory.Services.GetRequiredService<AtlasStore>();
+    private HttpClient NewClient() =>
+        _factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
+
+    /// <summary>A store with its own fresh DbContext, so assertions read what is really saved in the database.</summary>
+    private AtlasStore Store
+    {
+        get
+        {
+            var scope = _factory.Services.CreateScope();
+            _scopes.Add(scope);
+            return scope.ServiceProvider.GetRequiredService<AtlasStore>();
+        }
+    }
+
+    private TaskItemStatus SavedStatus(TaskItem task) => Store.GetTask(task.TaskId)!.Status;
 
     private User Marcus => Store.GetUsers().Single(u => u.FullName == "Marcus Vance");
 
@@ -167,7 +189,7 @@ public partial class AppIntegrationTests : IDisposable
         var response = await PostFormAsync($"/Tasks/ChangeStatus/{task.TaskId}", new() { ["status"] = "Completed" });
 
         Assert.Contains("Only Team Leaders can mark tasks as Completed.", await response.Content.ReadAsStringAsync());
-        Assert.Equal(TaskItemStatus.NeedsReview, task.Status);
+        Assert.Equal(TaskItemStatus.NeedsReview, SavedStatus(task));
     }
 
     [Fact]
@@ -178,7 +200,7 @@ public partial class AppIntegrationTests : IDisposable
         var response = await PostFormAsync($"/Tasks/ChangeStatus/{task.TaskId}", new() { ["status"] = "Completed" });
 
         Assert.Contains("Task approved and marked Completed.", await response.Content.ReadAsStringAsync());
-        Assert.Equal(TaskItemStatus.Completed, task.Status);
+        Assert.Equal(TaskItemStatus.Completed, SavedStatus(task));
     }
 
     [Fact]
@@ -196,7 +218,7 @@ public partial class AppIntegrationTests : IDisposable
         var response = await _client.PostAsync($"/Tasks/Submit/{task.TaskId}", form);
 
         Assert.Contains("Work submitted.", await response.Content.ReadAsStringAsync());
-        Assert.Equal(TaskItemStatus.NeedsReview, task.Status);
+        Assert.Equal(TaskItemStatus.NeedsReview, SavedStatus(task));
         Assert.Contains(Store.GetAttachments(task.TaskId), a => a.FileName == "banner.png");
     }
 
@@ -208,7 +230,7 @@ public partial class AppIntegrationTests : IDisposable
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("That isn&#x27;t a valid status.", await response.Content.ReadAsStringAsync());
-        Assert.Equal(TaskItemStatus.NeedsReview, task.Status);
+        Assert.Equal(TaskItemStatus.NeedsReview, SavedStatus(task));
     }
 
     [Fact]
