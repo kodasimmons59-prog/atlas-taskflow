@@ -31,24 +31,24 @@ Owner: Koda Simmons · Last updated: 2026-10-25
 | 1 | Problem & Product Brief: small businesses juggle email, calls and old tools to track work | Course submission (Brief) |
 | 2 | SaaS Product Analysis: Atlas as a multi-tenant, subscription SaaS | Course submission (Assignment 2) |
 | 3 | Product Design Package: personas, journeys, user stories, five-status workflow, Azure architecture | Course submission (Assignment 3) |
-| 4 | Working app built and tested locally | [PLAN-001](plans/PLAN-001-working-cloud-app.md), git history from `00e7324` |
+| 4 | Working app built, tested and deployed to Azure App Service; submitted | [PLAN-001](plans/PLAN-001-working-cloud-app.md), git history from `00e7324` |
 
 ## §2 Where we are
 
-Sprint 4. The code is on GitHub and CI is green. The app is live on Azure and passed the automated smoke test. Koda's manual live checks and
-reflection remain ([PLAN-001](plans/PLAN-001-working-cloud-app.md)).
+Sprint 5. Assignment 4 is submitted. Atlas is moving from in-memory data to a SQL Server database through Entity
+Framework Core ([PLAN-002](plans/PLAN-002-persistent-data.md)).
 
 ## §3 Where we're going
 
-Later sprints, as listed in the Assignment 4 brief: persistence, security (Sprint 6), production readiness (Sprint 7),
+Later sprints, as listed in the course briefs: security (Sprint 6), production readiness (Sprint 7),
 and the Version 1.0 release (Sprint 8). Each is a `HORIZON` plan in §4 until its assignment is released.
 
 ## §4 Plan register
 
 | Plan | Title | Sprint | Status |
 | --- | --- | --- | --- |
-| [PLAN-001](plans/PLAN-001-working-cloud-app.md) | Working cloud application | 4 | `ACTIVE` |
-| [PLAN-002](plans/PLAN-002-persistent-data.md) | Persistent data on Azure SQL and Blob Storage | 5 | `HORIZON` |
+| [PLAN-001](plans/PLAN-001-working-cloud-app.md) | Working cloud application | 4 | `DONE` |
+| [PLAN-002](plans/PLAN-002-persistent-data.md) | Persistent data with EF Core and SQL Server | 5 | `ACTIVE` |
 | [PLAN-003](plans/PLAN-003-security-and-sign-in.md) | Sign-in, invitations and authorization | 6 | `HORIZON` |
 | [PLAN-004](plans/PLAN-004-production-readiness.md) | Production readiness | 7 | `HORIZON` |
 | [PLAN-005](plans/PLAN-005-version-1-release.md) | Version 1.0 release | 8 | `HORIZON` |

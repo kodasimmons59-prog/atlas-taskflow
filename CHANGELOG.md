@@ -4,6 +4,10 @@ Notable changes to Atlas TaskFlow and its roadmap, newest first.
 
 ## 2026-10-25
 
+### Changed
+- PLAN-001 is `DONE`: Assignment 4 was submitted. PLAN-002 is `ACTIVE` and now uses SQL Server with files kept in the
+  database instead of Blob Storage (OV-004, OV-005).
+
 ### Added
 - First Azure deployment, live at https://atlas-taskflow-koda-d8gjabatgvatgtcj.northcentralus-01.azurewebsites.net; smoke test passed.
 - Azure App Service `atlas-taskflow-koda` (North Central US) and the GitHub deploy settings; PLAN-001 is `ACTIVE` again.
