@@ -23,8 +23,8 @@ You need an Azure account. [Azure for Students](https://azure.microsoft.com/free
    - **Pricing plan:** Free F1 is enough for this sprint
 3. Click **Review + create**, then **Create**.
 
-> Keep the app at **one instance** (the default). Data is held in memory, so a second instance would have its own
-> separate copy.
+> Keep the app at **one instance** (the default). The app updates the database schema when it starts, which should only
+> happen from one place at a time (see DR-0008).
 
 ### 2. Let GitHub deploy to it
 
@@ -37,7 +37,33 @@ You need an Azure account. [Azure for Students](https://azure.microsoft.com/free
      downloaded file.
    - **Variables** tab: **New repository variable**, name `AZURE_WEBAPP_NAME`, value: your app name (e.g. `atlas-taskflow-koda`).
 
-### 3. Deploy
+### 3. Create the Azure SQL database (Sprint 5)
+
+1. **Create a resource > SQL Database**. If the portal offers **Apply offer** for the free Azure SQL Database, use it.
+2. Fill in:
+   - **Resource group:** the same one as the web app
+   - **Database name:** `atlas-taskflow-db`
+   - **Server:** **Create new**, e.g. `atlas-taskflow-sql-koda`, in the same region as the web app, with **Use SQL
+     authentication**. Keep the admin password in a password manager; it never goes in the repo or in chat
+   - **Behavior when free limit reached:** **Auto-pause the database until next month**, so it can't cost anything
+3. **Networking:** Public endpoint, **Allow Azure services and resources to access this server: Yes** (so the web app can
+   connect) and **Add current client IP address: Yes** (so you can look at the tables from your PC or the portal).
+4. **Review + create**, then **Create**. The tables don't need creating by hand: the app does it on first start.
+
+### 4. Give the web app the connection string
+
+1. Open the database, then **Settings > Connection strings**, and copy the **ADO.NET (SQL authentication)** string.
+2. Open the web app, then **Settings > Environment variables > Connection strings** tab, and click **Add**:
+   - **Name:** `DefaultConnection`
+   - **Value:** the copied string, with `{your_password}` replaced by the admin password
+   - **Type:** `SQLAzure`
+3. Click **Apply**, then **Apply** again at the bottom, and confirm. The app restarts, creates the tables and adds the
+   sample teams.
+
+App Service hands this to the app as `ConnectionStrings:DefaultConnection`, the same name `appsettings.Development.json`
+uses for LocalDB, so the code is identical in both places and the password only exists in Azure.
+
+### 5. Deploy
 
 Push to `main`, or open **Actions > Build, test and deploy to Azure > Run workflow**. The run has two jobs:
 
@@ -48,11 +74,22 @@ Until the variable from step 2 exists, the deploy job is skipped and only build 
 
 ## Configuration notes
 
-- No connection strings or secrets are needed yet. The app has no database this sprint.
+- The only runtime secret is the database connection string, kept as an App Service connection string setting (step 4).
+- On start the app applies any new migrations and, if the database is empty, adds the sample teams. If the database
+  can't be reached, the app still starts and pages show a friendly "Atlas can't reach its database right now" message.
 - App Service sets `ASPNETCORE_ENVIRONMENT=Production` by default, which turns on HSTS and the friendly error page.
-- `/health` returns `Healthy` and is used by the smoke test. You can also set it as the App Service health check path
+- `/health` returns `Healthy` only when the database answers too, and is used by the smoke test. You can also set it as the App Service health check path
   (**Monitoring > Health check**).
-- Sample data resets whenever the app restarts, including after each deployment and when the Free tier idles out.
+- Data is kept in Azure SQL, so it survives restarts, deployments and the Free tier idling out. The free database
+  auto-pauses when idle; the first request after that can take up to a minute while it resumes (the app retries).
+
+## Checking persistence on the live site
+
+1. Open the live site and create a task (or edit one) with a name you'll recognise.
+2. In the portal, open the web app and click **Restart** on the Overview page. Wait for it to come back.
+3. Reload the site and find the task. It should still be there with the same details.
+4. Optional: in the database, open **Query editor**, sign in, and run
+   `SELECT TaskId, Title, Status, DueDate FROM Tasks ORDER BY TaskId DESC` to see the row itself.
 
 ## Evidence to collect for the assignment
 

@@ -4,6 +4,16 @@ Notable changes to Atlas TaskFlow and its roadmap, newest first.
 
 ## 2026-10-25
 
+### Added (Sprint 5)
+- Atlas stores its data in SQL Server through Entity Framework Core: ten tables, the first migration, and sample data
+  added once to an empty database (DR-0006, DR-0008). Files are kept in the database (DR-0007).
+- Friendly handling of database errors: a rejected save becomes a message on the page, and an unreachable database
+  shows a 503 page without technical details. `/health` now checks the database.
+- Tests run against real SQL Server (LocalDB locally, a container in CI); 10 new tests for CRUD, validation, errors and
+  persistence after a restart. 54 tests in total.
+- Docs: [DATA-MODEL.md](docs/DATA-MODEL.md), Azure SQL setup in DEPLOYMENT.md, Sprint 5 evidence in TESTING.md, dev log
+  entries 3 to 5.
+
 ### Changed
 - PLAN-001 is `DONE`: Assignment 4 was submitted. PLAN-002 is `ACTIVE` and now uses SQL Server with files kept in the
   database instead of Blob Storage (OV-004, OV-005).

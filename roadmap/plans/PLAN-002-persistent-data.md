@@ -22,11 +22,16 @@ authorization (PLAN-003), production database operations such as backups and sca
 | Step | State |
 | --- | --- |
 | Koda's answers on database, tools, files, sample data and submission | Done ([OV-005](../rulings/OV-005-assignment-5-answers.md)) |
-| EF Core data layer, migrations, validation and error handling | In progress |
-| Tests against a real SQL Server, including a restart test | Not started |
+| EF Core data layer, migrations, validation and error handling | Done |
+| Tests against a real SQL Server, including a restart test | Done: 54 passing; local browser restart check ([TESTING.md](../../docs/TESTING.md) §5) |
 | Azure SQL Database created and connected to the App Service | Waiting on Koda (portal steps) |
 | Deploy and live persistence check | Not started |
 | Submission document in the Assignment 4 style; reflection in Koda's words | Not started |
+
+## Decisions
+
+[DR-0006](../decisions/DR-0006-ef-core-sql-server.md), [DR-0007](../decisions/DR-0007-files-in-database.md),
+[DR-0008](../decisions/DR-0008-migrate-and-save-per-action.md). Data model: [DATA-MODEL.md](../../docs/DATA-MODEL.md).
 
 ## Done when
 

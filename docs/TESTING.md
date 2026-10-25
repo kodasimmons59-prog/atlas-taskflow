@@ -1,5 +1,71 @@
 # Testing evidence
 
+Sprint 5 (persistent data) is first; the Sprint 4 evidence it builds on follows from "Sprint 4" below.
+
+# Sprint 5: persistent data
+
+## 5.1 Automated tests against SQL Server
+
+54 tests, all passing on 2026-10-25. Every test runs against a real SQL Server database: each test creates its own empty
+database from the migrations, and drops it afterwards. Locally that's LocalDB; in GitHub Actions it's a SQL Server 2022
+container. The 44 Sprint 4 tests all still pass on the database version, and 10 new tests (`DataTests.cs`) cover
+persistence:
+
+| Assignment test | Test | What it proves | Result |
+| --- | --- | --- | --- |
+| Create | `CreateTask_WithValidInput_AppearsOnBoard`, `CreateProject_IsSaved` | A new task and a new project are saved | Pass |
+| Read | `Read_TaskDetailsShowSavedCommentAndFile` | A saved comment and file show on the task page, and the file downloads with the right contents | Pass |
+| Update | `Update_EditTask_SavesNewValues` | New title, description, due date and assignees are saved; the old assignee is removed | Pass |
+| Delete | `Delete_RemovesTaskWithItsCommentsAndFiles_KeepsNotifications` | The task, its comments and its files are gone; its notification stays without a link | Pass |
+| Required field | `CreateTask_WithoutTitle_ShowsValidationMessage` | "Give the task a title." and nothing saved | Pass |
+| Invalid input | `Update_TitleTooLong_IsRejectedAndNothingChanges`, `CreateTask_WithPastDueDate_IsRejected`, `CreateTask_WithGarbageDate_IsRejected`, `CreateProject_DuplicateName_ShowsValidationMessage` | Bad input is rejected with a message and the database is unchanged | Pass |
+| Persistence after restart | `Persistence_TaskSurvivesAppRestart` | A task created through the app is still there, with the same details, after the app is stopped and a new one started on the same database; the sample data isn't added twice | Pass |
+| Error handling | `Database_RejectsDuplicateEmail` | The database itself refuses a duplicate email (unique index) | Pass |
+| Error handling | `RejectedSave_BecomesFriendlyMessage_OnThePageYouCameFrom` | A save the database rejects becomes a plain message on the previous page | Pass |
+| Error handling | `DatabaseUnavailable_ShowsFriendlyPage_WithoutTechnicalDetails` | With no database, pages return 503 "Atlas can't reach its database right now", with no exception text; `/health` reports 503 | Pass |
+
+## 5.2 Browser walkthrough and restart, local
+
+On 2026-10-25 a Playwright script drove Chromium through the data lifecycle on a Release build in Production mode,
+connected to SQL Server 2022, starting from an empty database. Screenshots are in [`screenshots/`](screenshots/):
+
+| # | Step | Result | Screenshot |
+| --- | --- | --- | --- |
+| 1 | New task with no title | "Give the task a title." | `s5-01-validation-required.png` |
+| 2 | New task due in the past | "The due date can't be in the past." | `s5-02-validation-past-date.png` |
+| 3 | Fill in "Persistence check: client logo files", Website Refresh, Marcus | Form ready | `s5-03-create-form.png` |
+| 4 | Create | "Created …" and the task page | `s5-04-created-details.png` |
+| 5 | Edit the title and due date | "Task updated." with the new values | `s5-05-updated.png` |
+| 6 | All team tasks before the restart | Task listed | `s5-06-before-restart.png` |
+| 7 | Delete "Update team holiday calendar" | Confirmation page, then "Deleted …" | `s5-07-delete-confirm.png`, `s5-08-deleted.png` |
+| 8 | **Stop the app** (process ended at 22:38:39 UTC), then start it again (22:38:46 UTC) | Started without re-adding sample data | (log) |
+| 9 | All team tasks after the restart | Updated task still there; deleted task still gone | `s5-09-after-restart.png` |
+| 10 | Open the task after the restart | Same title, description, project, due date and assignee | `s5-10-after-restart-details.png` |
+| 11 | Start the app with an unreachable database | 503 "Atlas can't reach its database right now" | `s5-11-database-unavailable.png` |
+
+The rows behind steps 4 to 9, queried in SQL Server after the restart:
+
+| TaskId | Title | Status | DueDate | Project | Assigned to |
+| --- | --- | --- | --- | --- | --- |
+| 11 | Persistence check: client logo files (updated) | Assigned | 2026-11-07 | Website Refresh | Marcus Vance |
+
+`SELECT COUNT(*) FROM Tasks WHERE Title = 'Update team holiday calendar'` returned 0, and `__EFMigrationsHistory`
+holds `20261025222552_InitialCreate`.
+
+## 5.3 Schema check
+
+After the migration, SQL Server has the ten Atlas tables (ActivityEntries, Attachments, Comments, Notifications,
+Projects, TaskAssignees, Tasks, TeamMembers, Teams, Users) plus `__EFMigrationsHistory`, and 17 foreign keys matching
+[DATA-MODEL.md](DATA-MODEL.md). `dotnet ef migrations has-pending-model-changes` reports no differences between the
+model and the migrations.
+
+## 5.4 Live site (Azure SQL)
+
+To be filled in after the Azure SQL deployment: create a task on the live site, restart the App Service from the
+portal, and confirm the task is still there ([DEPLOYMENT.md](DEPLOYMENT.md), "Checking persistence on the live site").
+
+# Sprint 4
+
 Testing happened at three levels: automated unit and integration tests on every build, a scripted browser walkthrough
 locally, and a smoke test against the live Azure site after each deployment.
 
