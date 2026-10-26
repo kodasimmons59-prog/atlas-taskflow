@@ -61,9 +61,18 @@ model and the migrations.
 
 ## 5.4 Koda's PC (Visual Studio and LocalDB)
 
-Azure couldn't create a live database this sprint (DR-0009), so the restart test is repeated on Koda's own PC: create
-and edit a task, stop the app in Visual Studio, start it again, and find the task unchanged. Results go in the Word
-submission.
+Azure couldn't create a live database this sprint (DR-0009), so Koda repeated the restart test on their own PC on
+2026-10-25 (evening, local time), running from Visual Studio against LocalDB:
+
+| Step | Result |
+| --- | --- |
+| First F5 | EF Core created the AtlasTaskFlow database and ran the migration; sample teams added |
+| Created "title of something" (Website Refresh, due Nov 1, Marcus Vance), then edited it to "title of something 2" | "Created …" and "Task updated." |
+| Stopped the app at 10:17 PM, started it again at 10:18 PM | Started without re-adding sample data |
+| All team tasks and the task page after the restart | "title of something 2" still there with the same project, due date and assignee |
+| SQL Server Object Explorer | All ten tables in LocalDB; dbo.Tasks shows the row as TaskId 11 |
+
+Koda's screenshots are in the Word submission.
 
 # Sprint 4
 
