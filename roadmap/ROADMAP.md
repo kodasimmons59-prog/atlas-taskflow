@@ -35,8 +35,9 @@ Owner: Koda Simmons · Last updated: 2026-10-25
 
 ## §2 Where we are
 
-Sprint 5. Assignment 4 is submitted. Atlas is moving from in-memory data to a SQL Server database through Entity
-Framework Core ([PLAN-002](plans/PLAN-002-persistent-data.md)).
+Sprint 5. Atlas stores its data in SQL Server through Entity Framework Core, proven on LocalDB on Koda's PC; the live
+site stays on the Sprint 4 build until Azure allows a database ([DR-0009](decisions/DR-0009-live-database-deferred.md)).
+The submission is ready for Koda to accept ([PLAN-002](plans/PLAN-002-persistent-data.md)).
 
 ## §3 Where we're going
 
@@ -48,7 +49,7 @@ and the Version 1.0 release (Sprint 8). Each is a `HORIZON` plan in §4 until it
 | Plan | Title | Sprint | Status |
 | --- | --- | --- | --- |
 | [PLAN-001](plans/PLAN-001-working-cloud-app.md) | Working cloud application | 4 | `DONE` |
-| [PLAN-002](plans/PLAN-002-persistent-data.md) | Persistent data with EF Core and SQL Server | 5 | `ACTIVE` |
+| [PLAN-002](plans/PLAN-002-persistent-data.md) | Persistent data with EF Core and SQL Server | 5 | `REVIEW` |
 | [PLAN-003](plans/PLAN-003-security-and-sign-in.md) | Sign-in, invitations and authorization | 6 | `HORIZON` |
 | [PLAN-004](plans/PLAN-004-production-readiness.md) | Production readiness | 7 | `HORIZON` |
 | [PLAN-005](plans/PLAN-005-version-1-release.md) | Version 1.0 release | 8 | `HORIZON` |

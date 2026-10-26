@@ -1,6 +1,6 @@
 # PLAN-002 Persistent data with EF Core and SQL Server
 
-Status: `ACTIVE` · Sprint 5 · Source: Assignment 5 brief ([OV-004](../rulings/OV-004-complete-assignment-5.md))
+Status: `REVIEW` · Sprint 5 · Source: Assignment 5 brief ([OV-004](../rulings/OV-004-complete-assignment-5.md))
 
 ## Goal
 
@@ -27,7 +27,7 @@ authorization (PLAN-003), production database operations such as backups and sca
 | Tests against a real SQL Server, including a restart test | Done: 54 passing; local browser restart check ([TESTING.md](../../docs/TESTING.md) §5) |
 | Azure SQL Database created and connected to the App Service | Dropped from this plan: Azure refused every region; moved to PLAN-004 ([OV-006](../rulings/OV-006-finish-with-localdb.md)) |
 | Run on Koda's PC with LocalDB, restart check and screenshots | Done: stopped 10:17 PM, restarted 10:18 PM, task kept |
-| Submission document in the Assignment 4 style; reflection in Koda's words | Document drafted; reflection waiting on Koda |
+| Submission document in the Assignment 4 style; reflection in Koda's words | Done: submission document complete with Koda's reflection; waiting for Koda to accept |
 
 ## Decisions
 
