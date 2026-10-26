@@ -2,6 +2,12 @@
 
 Notable changes to Atlas TaskFlow and its roadmap, newest first.
 
+## 2026-10-26
+
+### Changed
+- Azure for Students refused to create an Azure SQL server in any region, so Sprint 5 finishes on LocalDB and the live
+  database moves to PLAN-004 (OV-006, DR-0009). The live site stays on the Sprint 4 build for now.
+
 ## 2026-10-25
 
 ### Added (Sprint 5)

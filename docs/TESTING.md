@@ -59,10 +59,11 @@ Projects, TaskAssignees, Tasks, TeamMembers, Teams, Users) plus `__EFMigrationsH
 [DATA-MODEL.md](DATA-MODEL.md). `dotnet ef migrations has-pending-model-changes` reports no differences between the
 model and the migrations.
 
-## 5.4 Live site (Azure SQL)
+## 5.4 Koda's PC (Visual Studio and LocalDB)
 
-To be filled in after the Azure SQL deployment: create a task on the live site, restart the App Service from the
-portal, and confirm the task is still there ([DEPLOYMENT.md](DEPLOYMENT.md), "Checking persistence on the live site").
+Azure couldn't create a live database this sprint (DR-0009), so the restart test is repeated on Koda's own PC: create
+and edit a task, stop the app in Visual Studio, start it again, and find the task unchanged. Results go in the Word
+submission.
 
 # Sprint 4
 

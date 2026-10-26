@@ -39,6 +39,10 @@ You need an Azure account. [Azure for Students](https://azure.microsoft.com/free
 
 ### 3. Create the Azure SQL database (Sprint 5)
 
+> **Not done yet.** In Sprint 5, Azure for Students refused to create the server in every region
+> (`RequestDisallowedByAzure`), so Sprint 5 runs on LocalDB and the live site stays on the Sprint 4 build until this works
+> (DR-0009). These steps are ready for when the region block is lifted.
+
 1. **Create a resource > SQL Database**. If the portal offers **Apply offer** for the free Azure SQL Database, use it.
 2. Fill in:
    - **Resource group:** the same one as the web app

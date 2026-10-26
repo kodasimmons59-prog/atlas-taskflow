@@ -10,3 +10,4 @@
 | [DR-0006](DR-0006-ef-core-sql-server.md) | Store data in SQL Server with Entity Framework Core | accepted |
 | [DR-0007](DR-0007-files-in-database.md) | Keep uploaded files in the database | accepted |
 | [DR-0008](DR-0008-migrate-and-save-per-action.md) | Migrate on startup, and save once per user action | accepted |
+| [DR-0009](DR-0009-live-database-deferred.md) | Defer the live database; Sprint 5 runs on LocalDB | accepted |
