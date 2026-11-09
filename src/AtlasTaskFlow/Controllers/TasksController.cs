@@ -1,5 +1,7 @@
 using AtlasTaskFlow.Models;
+using AtlasTaskFlow.Security;
 using AtlasTaskFlow.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AtlasTaskFlow.Controllers;
@@ -48,10 +50,12 @@ public class TasksController : AtlasController
         });
     }
 
+    // Managers only (Team Leaders and delegated managers). The policy runs before the action, so a member who types
+    // the address or posts the form directly gets the "not allowed" page; TaskWorkflowService checks again.
     [HttpGet]
+    [Authorize(Policy = TeamPermissions.Manager)]
     public IActionResult Create(int? projectId)
     {
-        if (!Current.CanManage) return LeaderOnly("create tasks");
 
         var defaultProject = Store.GetProjects(Current.Team.TeamId).First(p => p.IsDefaultTasksProject);
         var model = new TaskFormViewModel
@@ -64,9 +68,9 @@ public class TasksController : AtlasController
     }
 
     [HttpPost]
+    [Authorize(Policy = TeamPermissions.Manager)]
     public IActionResult Create(TaskFormViewModel model)
     {
-        if (!Current.CanManage) return LeaderOnly("create tasks");
 
         ValidateDueDate(model, isNew: true);
         if (!ModelState.IsValid) return View("Form", FillOptions(model));
@@ -84,9 +88,9 @@ public class TasksController : AtlasController
     }
 
     [HttpGet]
+    [Authorize(Policy = TeamPermissions.Manager)]
     public IActionResult Edit(int id)
     {
-        if (!Current.CanManage) return LeaderOnly("edit tasks");
         var task = FindTask(id);
         if (task is null) return NotFound();
 
@@ -102,9 +106,9 @@ public class TasksController : AtlasController
     }
 
     [HttpPost]
+    [Authorize(Policy = TeamPermissions.Manager)]
     public IActionResult Edit(int id, TaskFormViewModel model)
     {
-        if (!Current.CanManage) return LeaderOnly("edit tasks");
         if (FindTask(id) is null) return NotFound();
 
         model.TaskId = id;
@@ -124,14 +128,15 @@ public class TasksController : AtlasController
     }
 
     [HttpGet]
+    [Authorize(Policy = TeamPermissions.Manager)]
     public IActionResult Delete(int id)
     {
-        if (!Current.CanManage) return LeaderOnly("delete tasks");
         var task = FindTask(id);
         return task is null ? NotFound() : View(ToCards(new[] { task }).Single());
     }
 
     [HttpPost, ActionName("Delete")]
+    [Authorize(Policy = TeamPermissions.Manager)]
     public IActionResult DeleteConfirmed(int id)
     {
         var task = FindTask(id);
@@ -181,6 +186,7 @@ public class TasksController : AtlasController
     }
 
     [HttpPost]
+    [Authorize(Policy = TeamPermissions.Manager)]
     [RequestSizeLimit(30 * 1024 * 1024)]
     public async Task<IActionResult> AddReference(int id, List<IFormFile> files)
     {
@@ -190,6 +196,7 @@ public class TasksController : AtlasController
     }
 
     [HttpPost]
+    [Authorize(Policy = TeamPermissions.Manager)]
     public IActionResult RequestChanges(int id, string? feedback)
     {
         Report(_workflow.RequestChanges(Current.User, Current.Membership, id, feedback),
@@ -237,12 +244,6 @@ public class TasksController : AtlasController
     {
         if (result.Succeeded) FlashSuccess(successMessage);
         else FlashError(result.Error!);
-    }
-
-    private IActionResult LeaderOnly(string action)
-    {
-        FlashError($"Only Team Leaders can {action}.");
-        return RedirectToAction(nameof(Index));
     }
 
     private static async Task<List<UploadedFile>> ReadFiles(IEnumerable<IFormFile> files)

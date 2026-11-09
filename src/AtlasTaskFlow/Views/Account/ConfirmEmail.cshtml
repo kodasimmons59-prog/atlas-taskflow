@@ -1,0 +1,22 @@
+@model bool
+@{
+    ViewData["Title"] = Model ? "Email confirmed" : "Link not valid";
+}
+<div class="auth-wrap">
+    @if (Model)
+    {
+        <h1>Email confirmed</h1>
+        <section class="panel">
+            <p>Thanks! You can now create a team or accept an invitation.</p>
+            <a class="btn btn-primary" asp-controller="Workspace" asp-action="Index">Go to my teams</a>
+        </section>
+    }
+    else
+    {
+        <h1>This confirmation link doesn't work</h1>
+        <section class="panel">
+            <p>It may have expired or been copied incompletely. Sign in and choose "Send a new link" on your teams page.</p>
+            <a class="btn btn-outline-secondary" asp-action="SignIn">Sign in</a>
+        </section>
+    }
+</div>

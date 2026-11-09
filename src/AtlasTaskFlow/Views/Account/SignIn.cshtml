@@ -1,0 +1,46 @@
+@model SignInViewModel
+@inject IWebHostEnvironment Env
+@{
+    ViewData["Title"] = "Sign in";
+}
+<div class="auth-wrap">
+    <h1>Sign in to Atlas</h1>
+    <p class="text-body-secondary">Sign in to see your team's tasks and projects.</p>
+    <section class="panel">
+        <form method="post" asp-action="SignIn" novalidate>
+            <input type="hidden" asp-for="ReturnUrl" />
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2" role="alert"></div>
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label"></label>
+                <input asp-for="Email" class="form-control" autocomplete="username" autofocus />
+                <span asp-validation-for="Email" class="text-danger small"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label"></label>
+                <input asp-for="Password" class="form-control" autocomplete="current-password" />
+                <span asp-validation-for="Password" class="text-danger small"></span>
+            </div>
+            <div class="form-check mb-3">
+                <input asp-for="RememberMe" class="form-check-input" />
+                <label asp-for="RememberMe" class="form-check-label"></label>
+            </div>
+            <button class="btn btn-primary w-100">Sign in</button>
+        </form>
+        <div class="d-flex justify-content-between mt-3 small">
+            <a asp-action="ForgotPassword">Forgot your password?</a>
+            <a asp-action="Register">Create an account</a>
+        </div>
+    </section>
+    @if (Env.IsDevelopment())
+    {
+        @* Only on a developer PC. The live site never shows the demo password. *@
+        <p class="demo-note text-body-secondary mt-3">
+            Development build: the sample accounts (sarah@@brightside.example, marcus@@brightside.example,
+            priya@@brightside.example, leo@@cornerbakery.example) use the demo password from appsettings.Development.json.
+            Emails go to the <a href="~/dev/mailbox">developer mailbox</a>.
+        </p>
+    }
+</div>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

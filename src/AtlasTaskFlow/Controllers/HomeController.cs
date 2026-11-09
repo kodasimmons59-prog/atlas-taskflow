@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Globalization;
 using AtlasTaskFlow.Models;
 using AtlasTaskFlow.Services;
@@ -65,18 +64,5 @@ public class HomeController : AtlasController
         // Drop a trailing week that belongs entirely to the next month.
         if (days.Skip(35).All(d => !d.InMonth)) days = days.Take(35).ToList();
         return new CalendarMonth { Month = first, Days = days };
-    }
-
-    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-    public IActionResult Error()
-    {
-        return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
-    }
-
-    [Route("Home/Status/{code:int}")]
-    public IActionResult Status(int code)
-    {
-        Response.StatusCode = code;
-        return View(code);
     }
 }

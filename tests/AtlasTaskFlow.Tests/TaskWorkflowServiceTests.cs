@@ -1,11 +1,15 @@
+using AtlasTaskFlow.Data;
 using AtlasTaskFlow.Models;
 using AtlasTaskFlow.Services;
 
 namespace AtlasTaskFlow.Tests;
 
-public class TaskWorkflowServiceTests
+/// <summary>The task rules, run against a real (throwaway) SQL Server database.</summary>
+public class TaskWorkflowServiceTests : IDisposable
 {
-    private readonly AtlasStore _store = new();
+    private readonly TestDatabase _database = new();
+    private readonly AtlasDbContext _db;
+    private readonly AtlasStore _store;
     private readonly TaskWorkflowService _workflow;
     private readonly User _leader;
     private readonly User _member;
@@ -15,6 +19,8 @@ public class TaskWorkflowServiceTests
 
     public TaskWorkflowServiceTests()
     {
+        _db = _database.CreateMigratedContext();
+        _store = new AtlasStore(_db);
         _workflow = new TaskWorkflowService(_store);
         _leader = _store.AddUser("Sarah Chen", "sarah@example.com");
         _member = _store.AddUser("Marcus Vance", "marcus@example.com");
@@ -23,6 +29,12 @@ public class TaskWorkflowServiceTests
         _store.AddMember(_team.TeamId, _member.UserId, TeamRole.Member);
         _store.AddMember(_team.TeamId, _otherMember.UserId, TeamRole.Member);
         _project = _store.GetProjects(_team.TeamId).Single();
+    }
+
+    public void Dispose()
+    {
+        _db.Dispose();
+        _database.Dispose();
     }
 
     private TeamMember M(User u) => _store.GetMembership(_team.TeamId, u.UserId)!;

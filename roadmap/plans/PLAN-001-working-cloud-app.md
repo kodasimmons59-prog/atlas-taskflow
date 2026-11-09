@@ -1,6 +1,6 @@
 # PLAN-001 Working cloud application
 
-Status: `ACTIVE` · Sprint 4 · Source: Assignment 4 brief
+Status: `DONE` · Sprint 4 · Source: Assignment 4 brief
 
 ## Goal
 
@@ -23,8 +23,9 @@ Out (see later plans): database, sign-in, email.
 | Push to `kodasimmons59-prog/atlas-taskflow` | Done (`1d77b71`), first CI run green |
 | Create the Azure App Service and add the deploy secret | Done: `atlas-taskflow-koda`, North Central US, Linux, Free F1 |
 | First deploy and automated smoke test | Done (`d1ba462`), live at <https://atlas-taskflow-koda-d8gjabatgvatgtcj.northcentralus-01.azurewebsites.net> |
-| Manual live checks | Waiting on Koda ([TESTING.md](../../docs/TESTING.md) §3) |
-| Reflection | Koda writes it |
+| Manual live checks | Koda, with the submission |
+| Reflection | Koda wrote it |
+| Submission | Done: Koda submitted Assignment 4 on 2026-10-25 ([OV-005](../rulings/OV-005-assignment-5-answers.md)) |
 
 ## Decisions
 

@@ -1,0 +1,15 @@
+@model ErrorViewModel
+@{
+    ViewData["Title"] = "Database unavailable";
+    Layout = "_PlainLayout";
+}
+<div class="empty-state my-5">
+    <div class="display-5 fw-bold text-body-secondary">503</div>
+    <h1 class="h4 mt-2">Atlas can't reach its database right now</h1>
+    <p>Nothing you entered was lost or half-saved. Please wait a minute and try again.</p>
+    @if (Model.ShowRequestId)
+    {
+        <p class="small text-body-secondary">Request ID: <code>@Model.RequestId</code></p>
+    }
+    <a class="btn btn-primary" href="~/">Try again</a>
+</div>

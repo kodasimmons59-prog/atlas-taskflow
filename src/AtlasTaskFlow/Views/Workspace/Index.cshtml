@@ -1,0 +1,78 @@
+@model WorkspaceViewModel
+@{
+    ViewData["Title"] = "My teams";
+}
+<div class="page-head">
+    <div>
+        <h1>My teams</h1>
+        <p class="text-body-secondary mb-0">Create a team, or join one you've been invited to.</p>
+    </div>
+</div>
+
+@if (!Model.EmailConfirmed)
+{
+    <section class="panel panel-highlight mb-3">
+        <h2 class="h6">Confirm your email address</h2>
+        <p class="mb-2">We sent a confirmation link to <strong>@Model.Email</strong>. You need to confirm it before you can create or join a team.</p>
+        <form method="post" asp-controller="Account" asp-action="ResendConfirmation" class="m-0">
+            <button class="btn btn-sm btn-outline-primary">Send a new link</button>
+        </form>
+    </section>
+}
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <section class="panel h-100">
+            <div class="panel-head"><h2>Invitations</h2></div>
+            @if (Model.Invitations.Count == 0)
+            {
+                <p class="text-body-secondary mb-0">No invitations for @Model.Email. Ask your Team Leader to invite this address.</p>
+            }
+            @foreach (var inv in Model.Invitations)
+            {
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 py-2 border-bottom">
+                    <div>
+                        <div class="fw-semibold">@inv.TeamName</div>
+                        <div class="small text-body-secondary">Invited by @inv.InvitedBy</div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <form method="post" asp-action="Accept" asp-route-id="@inv.Invitation.TeamInvitationId" class="m-0">
+                            <button class="btn btn-sm btn-primary" @(Model.EmailConfirmed ? "" : "disabled")>Join team</button>
+                        </form>
+                        <form method="post" asp-action="Decline" asp-route-id="@inv.Invitation.TeamInvitationId" class="m-0">
+                            <button class="btn btn-sm btn-outline-secondary">Decline</button>
+                        </form>
+                    </div>
+                </div>
+            }
+        </section>
+    </div>
+    <div class="col-lg-6">
+        <section class="panel h-100">
+            <div class="panel-head"><h2>Create a team</h2></div>
+            <p class="small text-body-secondary">You'll be its Team Leader, and it starts with a "Tasks" project.</p>
+            <form method="post" asp-action="Create" novalidate>
+                <div class="mb-3">
+                    <label asp-for="NewTeam.TeamName" class="form-label"></label>
+                    <input asp-for="NewTeam.TeamName" class="form-control" />
+                    <span asp-validation-for="NewTeam.TeamName" class="text-danger small"></span>
+                </div>
+                <button class="btn btn-primary" @(Model.EmailConfirmed ? "" : "disabled")>Create team</button>
+            </form>
+        </section>
+    </div>
+</div>
+
+@if (Model.Teams.Count > 0)
+{
+    <section class="panel mt-3">
+        <div class="panel-head"><h2>Your teams</h2></div>
+        @foreach (var t in Model.Teams)
+        {
+            <form method="post" asp-action="Switch" class="d-inline">
+                <input type="hidden" name="teamId" value="@t.TeamId" />
+                <button class="btn btn-outline-secondary btn-sm me-2 mb-2">Open @t.TeamName</button>
+            </form>
+        }
+    </section>
+}

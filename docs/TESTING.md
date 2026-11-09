@@ -1,5 +1,108 @@
 # Testing evidence
 
+Newest sprint first: Sprint 6 (security), then Sprint 5 (persistent data), then Sprint 4.
+
+# Sprint 6: security and access control
+
+## 6.1 Automated security tests
+
+96 tests, all passing on 2026-11-09 (54 from Sprints 4 and 5, 42 new). The new ones are the security test matrix in
+[SECURITY.md](SECURITY.md) §5: signed out and signed in, allowed and refused, each role's boundaries, and attempts to
+reach another team's or another person's data by changing a number in the address, editing a cookie, or posting a form
+directly. One more test starts the app the way the live site does, on SQLite. The Sprint 4 and 5 tests now sign in
+through the real sign-in form instead of the old "Viewing as" switcher.
+
+## 6.2 Manual access-control test (the brief's eight steps)
+
+To do by hand on Koda's PC (Visual Studio, LocalDB) and on the live site, with screenshots for the submission:
+
+| # | Step | Expected | PC | Live |
+| --- | --- | --- | --- | --- |
+| 1 | Signed out, open `/Tasks` | Sign-in page | | |
+| 2 | Sign in with a wrong password | "That email and password don't match an account." | | |
+| 3 | Sign in as Marcus (Team Member) | Marcus's dashboard | | |
+| 4 | Open one of Marcus's tasks and post a comment | Comment saved (allowed) | | |
+| 5 | As Marcus, type `/Tasks/Create` in the address bar | 403 "You don't have permission to do that" | | |
+| 6 | As Marcus, open "Product photo retouching" and try to set it to Completed | "Only Team Leaders can mark tasks as Completed." | | |
+| 7 | As Marcus, switch to Corner Bakery, note a task's number, switch back to Brightside, open `/Tasks/Details/<that number>` | "We couldn't find that page" (404) | | |
+| 8 | Sign out, sign in as Sarah (Team Leader), approve the task | "Task approved and marked Completed." | | |
+| 9 | Sign out, then press the browser's Back button and reload | Sign-in page again | | |
+| 10 | PC only: create an account, open the developer mailbox, confirm the email, create a team | New team with only its own data | | |
+
+# Sprint 5: persistent data
+
+## 5.1 Automated tests against SQL Server
+
+54 tests, all passing on 2026-10-25. Every test runs against a real SQL Server database: each test creates its own empty
+database from the migrations, and drops it afterwards. Locally that's LocalDB; in GitHub Actions it's a SQL Server 2022
+container. The 44 Sprint 4 tests all still pass on the database version, and 10 new tests (`DataTests.cs`) cover
+persistence:
+
+| Assignment test | Test | What it proves | Result |
+| --- | --- | --- | --- |
+| Create | `CreateTask_WithValidInput_AppearsOnBoard`, `CreateProject_IsSaved` | A new task and a new project are saved | Pass |
+| Read | `Read_TaskDetailsShowSavedCommentAndFile` | A saved comment and file show on the task page, and the file downloads with the right contents | Pass |
+| Update | `Update_EditTask_SavesNewValues` | New title, description, due date and assignees are saved; the old assignee is removed | Pass |
+| Delete | `Delete_RemovesTaskWithItsCommentsAndFiles_KeepsNotifications` | The task, its comments and its files are gone; its notification stays without a link | Pass |
+| Required field | `CreateTask_WithoutTitle_ShowsValidationMessage` | "Give the task a title." and nothing saved | Pass |
+| Invalid input | `Update_TitleTooLong_IsRejectedAndNothingChanges`, `CreateTask_WithPastDueDate_IsRejected`, `CreateTask_WithGarbageDate_IsRejected`, `CreateProject_DuplicateName_ShowsValidationMessage` | Bad input is rejected with a message and the database is unchanged | Pass |
+| Persistence after restart | `Persistence_TaskSurvivesAppRestart` | A task created through the app is still there, with the same details, after the app is stopped and a new one started on the same database; the sample data isn't added twice | Pass |
+| Error handling | `Database_RejectsDuplicateEmail` | The database itself refuses a duplicate email (unique index) | Pass |
+| Error handling | `RejectedSave_BecomesFriendlyMessage_OnThePageYouCameFrom` | A save the database rejects becomes a plain message on the previous page | Pass |
+| Error handling | `DatabaseUnavailable_ShowsFriendlyPage_WithoutTechnicalDetails` | With no database, pages return 503 "Atlas can't reach its database right now", with no exception text; `/health` reports 503 | Pass |
+
+## 5.2 Browser walkthrough and restart, local
+
+On 2026-10-25 a Playwright script drove Chromium through the data lifecycle on a Release build in Production mode,
+connected to SQL Server 2022, starting from an empty database. Screenshots are in [`screenshots/`](screenshots/):
+
+| # | Step | Result | Screenshot |
+| --- | --- | --- | --- |
+| 1 | New task with no title | "Give the task a title." | `s5-01-validation-required.png` |
+| 2 | New task due in the past | "The due date can't be in the past." | `s5-02-validation-past-date.png` |
+| 3 | Fill in "Persistence check: client logo files", Website Refresh, Marcus | Form ready | `s5-03-create-form.png` |
+| 4 | Create | "Created …" and the task page | `s5-04-created-details.png` |
+| 5 | Edit the title and due date | "Task updated." with the new values | `s5-05-updated.png` |
+| 6 | All team tasks before the restart | Task listed | `s5-06-before-restart.png` |
+| 7 | Delete "Update team holiday calendar" | Confirmation page, then "Deleted …" | `s5-07-delete-confirm.png`, `s5-08-deleted.png` |
+| 8 | **Stop the app** (process ended at 22:38:39 UTC), then start it again (22:38:46 UTC) | Started without re-adding sample data | (log) |
+| 9 | All team tasks after the restart | Updated task still there; deleted task still gone | `s5-09-after-restart.png` |
+| 10 | Open the task after the restart | Same title, description, project, due date and assignee | `s5-10-after-restart-details.png` |
+| 11 | Start the app with an unreachable database | 503 "Atlas can't reach its database right now" | `s5-11-database-unavailable.png` |
+
+The rows behind steps 4 to 9, queried in SQL Server after the restart:
+
+| TaskId | Title | Status | DueDate | Project | Assigned to |
+| --- | --- | --- | --- | --- | --- |
+| 11 | Persistence check: client logo files (updated) | Assigned | 2026-11-07 | Website Refresh | Marcus Vance |
+
+`SELECT COUNT(*) FROM Tasks WHERE Title = 'Update team holiday calendar'` returned 0, and `__EFMigrationsHistory`
+holds `20261025222552_InitialCreate`.
+
+## 5.3 Schema check
+
+After the migration, SQL Server has the ten Atlas tables (ActivityEntries, Attachments, Comments, Notifications,
+Projects, TaskAssignees, Tasks, TeamMembers, Teams, Users) plus `__EFMigrationsHistory`, and 17 foreign keys matching
+[DATA-MODEL.md](DATA-MODEL.md). `dotnet ef migrations has-pending-model-changes` reports no differences between the
+model and the migrations.
+
+## 5.4 Koda's PC (Visual Studio and LocalDB)
+
+Azure couldn't create a live database this sprint (DR-0009), so Koda repeated the restart test on their own PC on
+2026-10-25 (evening, local time), running from Visual Studio against LocalDB:
+
+| Step | Result |
+| --- | --- |
+| First F5 | EF Core created the AtlasTaskFlow database and ran the migration; sample teams added |
+| Created "title of something" (Website Refresh, due Nov 1, Marcus Vance), then edited it to "title of something 2" | "Created …" and "Task updated." |
+| Stopped the app at 10:17 PM, started it again at 10:18 PM | Started without re-adding sample data |
+| All team tasks and the task page after the restart | "title of something 2" still there with the same project, due date and assignee |
+| SQL Server Object Explorer | All ten tables in LocalDB; dbo.Tasks shows the row as TaskId 11 |
+
+Koda's screenshots are in the Word submission.
+
+# Sprint 4
+
 Testing happened at three levels: automated unit and integration tests on every build, a scripted browser walkthrough
 locally, and a smoke test against the live Azure site after each deployment.
 

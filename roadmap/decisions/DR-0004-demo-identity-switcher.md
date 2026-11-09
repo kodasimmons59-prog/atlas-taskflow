@@ -1,6 +1,6 @@
 # DR-0004 Stand in for sign-in with a "Viewing as" switcher
 
-Date: 2026-10-25 · Status: accepted · Plan: PLAN-001
+Date: 2026-10-25 · Status: superseded by DR-0011 · Plan: PLAN-001
 
 **Context:** authentication is Sprint 6, but the leader-only completion gate and role permissions need a current user
 to demonstrate.

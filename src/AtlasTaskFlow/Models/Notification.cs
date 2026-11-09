@@ -14,6 +14,7 @@ public class Notification
 /// <summary>A line in the dashboard's Recent Activity feed.</summary>
 public class ActivityEntry
 {
+    public int ActivityEntryId { get; set; }
     public int TeamId { get; set; }
     public int? TaskId { get; set; }
     public string Message { get; set; } = "";

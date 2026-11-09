@@ -1,0 +1,24 @@
+@inject CurrentUserContext Current
+@{
+    var role = !Current.HasTeam ? "No team yet"
+        : Current.IsLeader ? "Team Leader"
+        : Current.CanManage ? "Team Member · Manager" : "Team Member";
+}
+<div class="dropdown">
+    <button class="btn btn-user dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Your account">
+        <span class="avatar">@Current.User.Initials</span>
+        <span class="d-none d-md-inline">@Current.User.FullName</span>
+    </button>
+    <div class="dropdown-menu dropdown-menu-end p-2 shadow-sm">
+        <div class="px-2 pb-2">
+            <div class="fw-semibold">@Current.User.FullName</div>
+            <div class="small text-body-secondary">@Current.User.Email</div>
+            <div class="small text-body-secondary">@role</div>
+        </div>
+        <div class="dropdown-divider"></div>
+        <a class="dropdown-item rounded" asp-controller="Workspace" asp-action="Index">My teams and invitations</a>
+        <form method="post" asp-controller="Account" asp-action="SignOut" class="m-0">
+            <button type="submit" class="dropdown-item rounded">Sign out</button>
+        </form>
+    </div>
+</div>

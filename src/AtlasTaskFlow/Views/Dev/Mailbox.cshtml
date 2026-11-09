@@ -1,0 +1,26 @@
+@model IReadOnlyList<AtlasTaskFlow.Security.OutgoingEmail>
+@{
+    ViewData["Title"] = "Developer mailbox";
+}
+<div class="page-head">
+    <div>
+        <h1>Developer mailbox</h1>
+        <p class="text-body-secondary mb-0">Development only. Atlas has no email service yet, so the emails it would send are shown here instead. The newest is first. This page doesn't exist on the live site.</p>
+    </div>
+</div>
+@if (Model.Count == 0)
+{
+    <div class="panel empty-state">No emails yet. Create an account or use "Forgot your password?" to send one.</div>
+}
+@foreach (var mail in Model)
+{
+    <section class="panel mb-3">
+        <div class="small text-body-secondary">@mail.SentAt.ToString("g") · To @mail.To</div>
+        <h2 class="h6 mt-1">@mail.Subject</h2>
+        <p class="mb-2">@mail.Body</p>
+        @if (mail.Link is not null)
+        {
+            <a class="btn btn-sm btn-primary" href="@mail.Link">Open the link</a>
+        }
+    </section>
+}

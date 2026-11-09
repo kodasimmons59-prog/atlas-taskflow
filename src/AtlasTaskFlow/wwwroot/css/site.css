@@ -189,3 +189,8 @@ a.stat:hover { border-color: var(--atlas-primary); }
 .input-validation-error { border-color: #dc3545; }
 
 .atlas-footer { border-top: 1px solid var(--atlas-border); background: var(--atlas-surface); color: var(--atlas-muted); font-size: .85rem; padding: 1rem 0; }
+
+/* Sprint 6: sign-in and account pages */
+.auth-wrap { max-width: 440px; margin: 1.5rem auto; }
+.auth-wrap h1 { font-size: 1.5rem; font-weight: 700; }
+.demo-note { font-size: .85rem; }

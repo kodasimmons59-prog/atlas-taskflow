@@ -1,5 +1,7 @@
 using AtlasTaskFlow.Models;
+using AtlasTaskFlow.Security;
 using AtlasTaskFlow.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AtlasTaskFlow.Controllers;
@@ -33,24 +35,13 @@ public class ProjectsController : AtlasController
     }
 
     [HttpGet]
-    public IActionResult Create()
-    {
-        if (!Current.CanManage)
-        {
-            FlashError("Only Team Leaders can create projects.");
-            return RedirectToAction(nameof(Index));
-        }
-        return View(new ProjectFormViewModel());
-    }
+    [Authorize(Policy = TeamPermissions.Manager)]
+    public IActionResult Create() => View(new ProjectFormViewModel());
 
     [HttpPost]
+    [Authorize(Policy = TeamPermissions.Manager)]
     public IActionResult Create(ProjectFormViewModel model)
     {
-        if (!Current.CanManage)
-        {
-            FlashError("Only Team Leaders can create projects.");
-            return RedirectToAction(nameof(Index));
-        }
 
         var name = model.ProjectName?.Trim() ?? "";
         if (Store.GetProjects(Current.Team.TeamId).Any(p => string.Equals(p.ProjectName, name, StringComparison.OrdinalIgnoreCase)))

@@ -101,3 +101,100 @@ public class ProjectFormViewModel
 }
 
 public record TeamMemberView(User User, TeamMember Membership, int OpenTasks);
+
+// ---------- Sprint 6: accounts and teams ----------
+
+public class SignInViewModel
+{
+    [Required(ErrorMessage = "Enter your email address.")]
+    [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+    public string Email { get; set; } = "";
+
+    [Required(ErrorMessage = "Enter your password.")]
+    [DataType(DataType.Password)]
+    public string Password { get; set; } = "";
+
+    [Display(Name = "Keep me signed in on this device")]
+    public bool RememberMe { get; set; }
+
+    public string? ReturnUrl { get; set; }
+}
+
+public class RegisterViewModel
+{
+    [Required(ErrorMessage = "Enter your name.")]
+    [StringLength(100, ErrorMessage = "Keep your name under 100 characters.")]
+    [Display(Name = "Full name")]
+    public string FullName { get; set; } = "";
+
+    [Required(ErrorMessage = "Enter your email address.")]
+    [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+    [StringLength(256)]
+    public string Email { get; set; } = "";
+
+    [Required(ErrorMessage = "Choose a password.")]
+    [StringLength(100, MinimumLength = 8, ErrorMessage = "Use at least 8 characters.")]
+    [DataType(DataType.Password)]
+    public string Password { get; set; } = "";
+
+    [Required(ErrorMessage = "Type your password again.")]
+    [DataType(DataType.Password)]
+    [Compare(nameof(Password), ErrorMessage = "The two passwords don't match.")]
+    [Display(Name = "Confirm password")]
+    public string ConfirmPassword { get; set; } = "";
+}
+
+public class ForgotPasswordViewModel
+{
+    [Required(ErrorMessage = "Enter your email address.")]
+    [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+    public string Email { get; set; } = "";
+}
+
+public class ResetPasswordViewModel
+{
+    [Required(ErrorMessage = "Enter your email address.")]
+    [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+    public string Email { get; set; } = "";
+
+    [Required]
+    public string Code { get; set; } = "";
+
+    [Required(ErrorMessage = "Choose a new password.")]
+    [StringLength(100, MinimumLength = 8, ErrorMessage = "Use at least 8 characters.")]
+    [DataType(DataType.Password)]
+    [Display(Name = "New password")]
+    public string Password { get; set; } = "";
+
+    [Required(ErrorMessage = "Type your new password again.")]
+    [DataType(DataType.Password)]
+    [Compare(nameof(Password), ErrorMessage = "The two passwords don't match.")]
+    [Display(Name = "Confirm new password")]
+    public string ConfirmPassword { get; set; } = "";
+}
+
+public class CreateTeamViewModel
+{
+    [Required(ErrorMessage = "Give your team a name.")]
+    [StringLength(100, ErrorMessage = "Keep the team name under 100 characters.")]
+    [Display(Name = "Team name")]
+    public string TeamName { get; set; } = "";
+}
+
+public record InvitationView(TeamInvitation Invitation, string TeamName, string InvitedBy);
+
+public class WorkspaceViewModel
+{
+    public bool EmailConfirmed { get; init; }
+    public string Email { get; init; } = "";
+    public IReadOnlyList<Team> Teams { get; init; } = Array.Empty<Team>();
+    public IReadOnlyList<InvitationView> Invitations { get; init; } = Array.Empty<InvitationView>();
+    public CreateTeamViewModel NewTeam { get; init; } = new();
+}
+
+public class TeamPageViewModel
+{
+    public IReadOnlyList<TeamMemberView> Members { get; init; } = Array.Empty<TeamMemberView>();
+    public IReadOnlyList<TeamInvitation> Invitations { get; init; } = Array.Empty<TeamInvitation>();
+    public string? InviteEmail { get; init; }
+}

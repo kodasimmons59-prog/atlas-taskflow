@@ -13,6 +13,7 @@ public record UploadedFile(string FileName, string ContentType, byte[] Content);
 /// <summary>
 /// The task rules from the Sprint 3 design: who may create and change tasks, the five-status workflow,
 /// the leader-only completion gate, and the notifications each step sends.
+/// Each public method is one user action and ends with a single save, so its changes are stored together or not at all.
 /// </summary>
 public class TaskWorkflowService
 {
@@ -64,19 +65,21 @@ public class TaskWorkflowService
             return WorkflowResult.Fail("Choose a project from your team.");
 
         var assignees = ValidAssignees(membership.TeamId, assigneeIds);
-        created = _store.AddTask(new TaskItem
+        var task = new TaskItem
         {
             ProjectId = projectId,
             Title = title.Trim(),
             Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
             DueDate = dueDate.Date,
             CreatedByUserId = actor.UserId,
-            AssigneeIds = assignees,
             Status = assignees.Count > 0 ? TaskItemStatus.Assigned : TaskItemStatus.NotAssigned
-        });
+        };
+        task.SetAssignees(assignees);
+        created = _store.AddTask(task);
 
         _store.AddActivity(membership.TeamId, created.TaskId, $"{actor.FullName} created \"{created.Title}\".");
         NotifyAssigned(actor, membership.TeamId, created, assignees);
+        _store.SaveChanges();
         return WorkflowResult.Ok();
     }
 
@@ -103,7 +106,7 @@ public class TaskWorkflowService
             t.Title = title.Trim();
             t.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
             t.DueDate = dueDate.Date;
-            t.AssigneeIds = assignees;
+            t.SetAssignees(assignees);
 
             // Keep the status consistent with who is assigned.
             if (assignees.Count == 0 && t.Status != TaskItemStatus.Completed)
@@ -114,6 +117,7 @@ public class TaskWorkflowService
 
         _store.AddActivity(membership.TeamId, taskId, $"{actor.FullName} edited \"{task.Title}\".");
         NotifyAssigned(actor, membership.TeamId, task, newlyAssigned);
+        _store.SaveChanges();
         return WorkflowResult.Ok();
     }
 
@@ -128,6 +132,7 @@ public class TaskWorkflowService
 
         _store.DeleteTask(taskId);
         _store.AddActivity(membership.TeamId, null, $"{actor.FullName} deleted \"{task.Title}\".");
+        _store.SaveChanges();
         return WorkflowResult.Ok();
     }
 
@@ -142,6 +147,7 @@ public class TaskWorkflowService
             return WorkflowResult.Fail(error);
 
         ApplyStatus(actor, membership.TeamId, task, newStatus);
+        _store.SaveChanges();
         return WorkflowResult.Ok();
     }
 
@@ -156,10 +162,11 @@ public class TaskWorkflowService
 
         _store.UpdateTask(taskId, t =>
         {
-            t.AssigneeIds = new List<int> { actor.UserId };
+            t.SetAssignees(new[] { actor.UserId });
             t.Status = TaskItemStatus.Assigned;
         });
         _store.AddActivity(membership.TeamId, taskId, $"{actor.FullName} picked up \"{task.Title}\".");
+        _store.SaveChanges();
         return WorkflowResult.Ok();
     }
 
@@ -185,6 +192,7 @@ public class TaskWorkflowService
             _store.AddComment(taskId, actor.UserId, note.Trim());
 
         ApplyStatus(actor, membership.TeamId, task, TaskItemStatus.NeedsReview);
+        _store.SaveChanges();
         return WorkflowResult.Ok();
     }
 
@@ -202,6 +210,7 @@ public class TaskWorkflowService
 
         foreach (var file in files)
             AddFile(actor, taskId, file, AttachmentType.Reference);
+        _store.SaveChanges();
         return WorkflowResult.Ok();
     }
 
@@ -223,6 +232,7 @@ public class TaskWorkflowService
         ApplyStatus(actor, membership.TeamId, task, TaskItemStatus.InProgress);
         foreach (var userId in task.AssigneeIds.Where(id => id != actor.UserId))
             _store.AddNotification(userId, membership.TeamId, taskId, $"{actor.FullName} requested changes on \"{task.Title}\".");
+        _store.SaveChanges();
         return WorkflowResult.Ok();
     }
 
@@ -232,10 +242,11 @@ public class TaskWorkflowService
             return WorkflowResult.Fail("That task doesn't exist in this team.");
         if (string.IsNullOrWhiteSpace(text))
             return WorkflowResult.Fail("Write a message before posting.");
-        if (text.Length > 1000)
+        if (text.Trim().Length > 1000)
             return WorkflowResult.Fail("Comments can be at most 1000 characters.");
 
         _store.AddComment(taskId, actor.UserId, text.Trim());
+        _store.SaveChanges();
         return WorkflowResult.Ok();
     }
 
@@ -257,7 +268,7 @@ public class TaskWorkflowService
             t.Status = newStatus;
             t.CompletedAt = newStatus == TaskItemStatus.Completed ? DateTime.UtcNow : null;
             if (newStatus == TaskItemStatus.NotAssigned)
-                t.AssigneeIds = new List<int>();
+                t.SetAssignees(Array.Empty<int>());
         });
 
         var verb = newStatus == TaskItemStatus.Completed ? "approved" : $"moved to {newStatus.DisplayName()}";
