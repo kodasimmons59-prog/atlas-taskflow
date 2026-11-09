@@ -1,39 +1,50 @@
 using AtlasTaskFlow.Models;
+using AtlasTaskFlow.Security;
 
 namespace AtlasTaskFlow.Services;
 
 /// <summary>
-/// Works out who is using the app and which team they are working in.
+/// Works out who is making this request and which team they are working in.
 ///
-/// Sprint 4 has no login yet (authentication is Sprint 6), so the person is picked with the
-/// "Viewing as" switcher and remembered in a cookie. When ASP.NET Core Identity is added, only this
-/// class needs to change: it will read the signed-in user instead of the cookie.
+/// Sprint 6: the person comes from the signed-in identity (the encrypted sign-in cookie made by ASP.NET Core Identity),
+/// never from anything the browser can edit. The chosen team is remembered in a cookie, but it is only accepted if the
+/// person really belongs to that team, so an edited cookie can't open another team's data.
 /// </summary>
 public class CurrentUserContext
 {
-    public const string UserCookie = "atlas_user";
     public const string TeamCookie = "atlas_team";
+
+    private readonly User? _user;
+    private readonly Team? _team;
+    private readonly TeamMember? _membership;
 
     public CurrentUserContext(AtlasStore store, IHttpContextAccessor accessor)
     {
-        var cookies = accessor.HttpContext?.Request.Cookies;
-        var users = store.GetUsers();
+        var http = accessor.HttpContext;
+        var principal = http?.User;
+        if (principal?.Identity?.IsAuthenticated == true
+            && int.TryParse(principal.FindFirst(AtlasClaimsFactory.UserIdClaim)?.Value, out var userId))
+        {
+            _user = store.GetUser(userId);
+        }
 
-        User = (int.TryParse(cookies?[UserCookie], out var userId) ? store.GetUser(userId) : null) ?? users.First();
-        Teams = store.GetTeamsForUser(User.UserId);
-
-        // Only accept a team the user actually belongs to, so a stale or edited cookie can't expose another team.
-        Team = (int.TryParse(cookies?[TeamCookie], out var teamId) ? Teams.FirstOrDefault(t => t.TeamId == teamId) : null)
-               ?? Teams.First();
-        Membership = store.GetMembership(Team.TeamId, User.UserId)!;
-        AllUsers = users;
+        Teams = _user is null ? Array.Empty<Team>() : store.GetTeamsForUser(_user.UserId);
+        _team = (int.TryParse(http?.Request.Cookies[TeamCookie], out var teamId) ? Teams.FirstOrDefault(t => t.TeamId == teamId) : null)
+                ?? Teams.FirstOrDefault();
+        if (_team is not null && _user is not null)
+            _membership = store.GetMembership(_team.TeamId, _user.UserId);
     }
 
-    public User User { get; }
-    public Team Team { get; }
-    public TeamMember Membership { get; }
-    public IReadOnlyList<Team> Teams { get; }
-    public IReadOnlyList<User> AllUsers { get; }
+    public bool IsSignedIn => _user is not null;
 
-    public bool CanManage => Membership.CanManage;
+    /// <summary>Signed in and a member of at least one team. Pages that show team data need this.</summary>
+    public bool HasTeam => _membership is not null;
+
+    public User User => _user ?? throw new InvalidOperationException("Nobody is signed in.");
+    public Team Team => _team ?? throw new InvalidOperationException("The signed-in user has no team.");
+    public TeamMember Membership => _membership ?? throw new InvalidOperationException("The signed-in user has no team.");
+    public IReadOnlyList<Team> Teams { get; }
+
+    public bool CanManage => _membership?.CanManage ?? false;
+    public bool IsLeader => _membership?.Role == TeamRole.Leader;
 }

@@ -1,4 +1,4 @@
-# Atlas data model (Sprint 5)
+# Atlas data model (Sprints 5 and 6)
 
 Atlas stores its data in SQL Server through Entity Framework Core. The classes are in `src/AtlasTaskFlow/Models/`, the
 mapping (keys, relationships, sizes, indexes) is in `src/AtlasTaskFlow/Data/AtlasDbContext.cs`, and the schema is
@@ -64,5 +64,18 @@ Teams → Projects → Tasks, so the Tasks → Notifications link is `NO ACTION`
 - The rules are enforced twice: by the forms and workflow service (friendly messages) and by the database (keys, sizes,
   unique indexes), so bad data can't get in even through a bug.
 - Files are stored in the database ([DR-0007](../roadmap/decisions/DR-0007-files-in-database.md)).
-- SQL Server everywhere: LocalDB on the developer PC, Azure SQL Database live
-  ([DR-0006](../roadmap/decisions/DR-0006-ef-core-sql-server.md)).
+- SQL Server on the developer PC (LocalDB) ([DR-0006](../roadmap/decisions/DR-0006-ef-core-sql-server.md)); from
+  Sprint 6 the live site uses SQLite with the same tables and its own migrations
+  ([DR-0010](../roadmap/decisions/DR-0010-sqlite-on-live-site.md)).
+
+## Sprint 6 additions: sign-in and invitations
+
+| Table | What it holds | Keys and rules |
+| --- | --- | --- |
+| AspNetUsers | Sign-in accounts from ASP.NET Core Identity: email, password **hash** (never the password), email confirmed, failed-attempt count, lockout end, security stamp | `Id` (text); `UserId` → Users, **unique** (one account per person), Restrict on delete; unique normalized email |
+| AspNetUserClaims, AspNetUserLogins, AspNetUserTokens | Identity's supporting tables (extra claims, outside logins, stored tokens). Created by Identity; Atlas doesn't use them yet | → AspNetUsers, cascade |
+| TeamInvitations | A leader's invitation for an email address to join a team | `TeamId` → Teams (cascade), `InvitedByUserId` → Users (Restrict); **unique (TeamId, Email)**, email stored in lower case |
+
+The Sprint 5 tables are unchanged: an account points to a person, rather than the person becoming the account, so tasks,
+comments and teams didn't need to change ([DR-0011](../roadmap/decisions/DR-0011-identity-accounts.md)). There are no
+site-wide role tables, because a person's role belongs to each team (TeamMembers.Role and HasManagerPermissions).

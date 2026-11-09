@@ -39,7 +39,7 @@ public partial class AppIntegrationTests
         _scopes.Clear();
         _factory.Dispose();
         _factory = AtlasFactory.Create(_database.ConnectionString);
-        _client = NewClient();
+        await SignInAsAsync(SarahEmail);
 
         var html = await _client.GetStringAsync("/Tasks?filter=all");
         Assert.Contains("Persistence check: client logo files", html);
@@ -194,16 +194,17 @@ public partial class AppIntegrationTests
     public async Task DatabaseUnavailable_ShowsFriendlyPage_WithoutTechnicalDetails()
     {
         // A copy of the app in Production mode whose database server doesn't exist.
-        using var broken = AtlasFactory.Create(_database.ConnectionString, "Production").WithWebHostBuilder(builder =>
-            builder.ConfigureServices(services =>
-            {
-                services.RemoveAll<DbContextOptions<AtlasDbContext>>();
-                services.AddDbContext<AtlasDbContext>(o =>
-                    o.UseSqlServer("Server=localhost,1;Database=Nowhere;User Id=sa;Password=wrong;Connect Timeout=2;TrustServerCertificate=True"));
-            }));
+        using var broken = AtlasFactory.Create(
+            "Server=localhost,1;Database=Nowhere;User Id=sa;Password=wrong;Connect Timeout=2;TrustServerCertificate=True", "Production");
         var client = broken.CreateClient(new() { BaseAddress = new Uri("https://localhost") });
 
-        var response = await client.GetAsync("/Tasks");
+        // The sign-in page itself needs no database; signing in does.
+        var signInPage = await client.GetStringAsync("/Account/SignIn");
+        var token = TokenRegex().Match(signInPage).Groups[1].Value;
+        var response = await client.PostAsync("/Account/SignIn", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = token, ["Email"] = SarahEmail, ["Password"] = AtlasFactory.DemoPassword
+        }));
         var html = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);

@@ -1,6 +1,6 @@
 # DR-0009 Defer the live database; Sprint 5 runs on LocalDB
 
-Date: 2026-10-26 · Status: accepted · Plan: PLAN-002
+Date: 2026-10-26 · Status: superseded by DR-0010 · Plan: PLAN-002
 
 **Context:** creating an Azure SQL server failed in every region with `RequestDisallowedByAzure`, the Azure for Students
 region policy, even for regions the subscription's own policy lists as allowed (northcentralus, westus2). Lifting it

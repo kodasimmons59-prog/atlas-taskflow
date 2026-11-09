@@ -3,12 +3,17 @@ using AtlasTaskFlow.Models;
 namespace AtlasTaskFlow.Services;
 
 /// <summary>
-/// Sample teams, people and tasks based on the Sprint 3 personas, so the app can be demonstrated before real sign-up
-/// exists. They are added once, when the database is empty; after that the database keeps whatever users change.
+/// Sample teams, people and tasks based on the Sprint 3 personas, so the app can be demonstrated straight away. They are added once, when the database is empty; after that the database keeps whatever users change.
 /// Due dates are relative to the day the sample data was added.
 /// </summary>
 public static class SeedData
 {
+    /// <summary>The sample people's emails. Sprint 6 gives each a sign-in account (Security/DemoAccounts.cs).</summary>
+    public static readonly string[] SampleEmails =
+    {
+        "sarah@brightside.example", "marcus@brightside.example", "priya@brightside.example", "leo@cornerbakery.example"
+    };
+
     /// <summary>Adds the sample data if the database has no users yet. Returns true if it added anything.</summary>
     public static bool EnsureSeeded(AtlasStore store, DateTime today)
     {

@@ -1,0 +1,17 @@
+@inject CurrentUserContext Current
+@{
+    ViewData["Title"] = "Not allowed";
+}
+<div class="empty-state my-5">
+    <div class="display-5 fw-bold text-body-secondary">403</div>
+    <h1 class="h4 mt-2">You don't have permission to do that</h1>
+    <p>
+        @if (Current.HasTeam)
+        {
+            <text>In @Current.Team.TeamName you're a @(Current.IsLeader ? "Team Leader" : Current.CanManage ? "Team Member with manager permissions" : "Team Member").</text>
+        }
+        Creating, editing and deleting tasks and projects is for Team Leaders and members they have made managers.
+        Inviting people and changing permissions is for Team Leaders only.
+    </p>
+    <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Back to dashboard</a>
+</div>

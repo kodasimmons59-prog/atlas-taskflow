@@ -101,3 +101,50 @@ and failed. The old error action also lived in `HomeController`, whose construct
 **Fix:** a separate `ErrorController` with no database dependencies, and a plain layout (`_PlainLayout`) for the error
 pages. The test now gets a 503 with the friendly message and no technical details.
 
+## Sprint 6
+
+## 6. Signing up could have taken over a sample person
+
+**Found by:** writing the sign-up page and asking "what if the email already belongs to someone?"
+
+**What happened:** the sample people (Sarah, Marcus, Priya, Leo) existed in the Users table from Sprint 5 but had no
+sign-in accounts until the demo password setting created them. On the live site, before that setting exists, anyone
+could have signed up as `sarah@brightside.example`. If sign-up had linked the new account to the existing person with
+that email, they would have become Sarah, Team Leader of Brightside, with all her tasks.
+
+**Fix:** sign-up refuses any email that already belongs to an Atlas person, with or without an account, ignoring
+upper/lower case ("An account with this email already exists."). Test `S12_SignUp_WithAnExistingPersonsEmail_IsRefused`.
+The sample accounts are only created from the configured password, at start-up.
+
+## 7. Identity's `Users` clashed with Atlas's `Users`
+
+**Found by:** the first build after making the DbContext an Identity context.
+
+**What happened:** Identity's base class already has a `Users` property for its accounts, and Atlas's DbContext has
+its own `Users` for people. The names collide.
+
+**Fix:** Atlas's property hides the base one (`new DbSet<User> Users`), the accounts are reached as `Accounts`, and the
+people table is pinned to the name `Users` so the existing table and data stay as they were. The new migration only adds
+tables; it doesn't touch any Sprint 5 table.
+
+## 8. The tests couldn't switch the database engine
+
+**Found by:** the SQLite test, which starts the app with the SQLite setting.
+
+**What happened:** the integration tests pass their settings to the app after `Program.cs` has already registered its
+services, so a choice made while registering ("SQL Server or SQLite?") would never see the test's setting.
+
+**Fix:** `DatabaseSetup` reads the engine and connection string each time a DbContext is created, not at start-up, so
+the tests (and the live site's settings) are always honoured. Same idea as Sprint 5's connection string.
+
+## 9. The "not found" page needed someone signed in
+
+**Found by:** requiring sign-in on every page.
+
+**What happened:** the friendly 404 page lived in `HomeController`, which now requires a signed-in team member, so a
+signed-out visitor to a missing page would have been sent to sign in instead of seeing "not found", and the shared
+layout assumed there was always a current user and team.
+
+**Fix:** the status page moved to `ErrorController`, which is open to everyone, and the layout shows the team menus only
+to signed-in team members, and Sign in / Create account to everyone else.
+

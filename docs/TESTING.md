@@ -1,6 +1,33 @@
 # Testing evidence
 
-Sprint 5 (persistent data) is first; the Sprint 4 evidence it builds on follows from "Sprint 4" below.
+Newest sprint first: Sprint 6 (security), then Sprint 5 (persistent data), then Sprint 4.
+
+# Sprint 6: security and access control
+
+## 6.1 Automated security tests
+
+96 tests, all passing on 2026-11-09 (54 from Sprints 4 and 5, 42 new). The new ones are the security test matrix in
+[SECURITY.md](SECURITY.md) §5: signed out and signed in, allowed and refused, each role's boundaries, and attempts to
+reach another team's or another person's data by changing a number in the address, editing a cookie, or posting a form
+directly. One more test starts the app the way the live site does, on SQLite. The Sprint 4 and 5 tests now sign in
+through the real sign-in form instead of the old "Viewing as" switcher.
+
+## 6.2 Manual access-control test (the brief's eight steps)
+
+To do by hand on Koda's PC (Visual Studio, LocalDB) and on the live site, with screenshots for the submission:
+
+| # | Step | Expected | PC | Live |
+| --- | --- | --- | --- | --- |
+| 1 | Signed out, open `/Tasks` | Sign-in page | | |
+| 2 | Sign in with a wrong password | "That email and password don't match an account." | | |
+| 3 | Sign in as Marcus (Team Member) | Marcus's dashboard | | |
+| 4 | Open one of Marcus's tasks and post a comment | Comment saved (allowed) | | |
+| 5 | As Marcus, type `/Tasks/Create` in the address bar | 403 "You don't have permission to do that" | | |
+| 6 | As Marcus, open "Product photo retouching" and try to set it to Completed | "Only Team Leaders can mark tasks as Completed." | | |
+| 7 | As Marcus, switch to Corner Bakery, note a task's number, switch back to Brightside, open `/Tasks/Details/<that number>` | "We couldn't find that page" (404) | | |
+| 8 | Sign out, sign in as Sarah (Team Leader), approve the task | "Task approved and marked Completed." | | |
+| 9 | Sign out, then press the browser's Back button and reload | Sign-in page again | | |
+| 10 | PC only: create an account, open the developer mailbox, confirm the email, create a team | New team with only its own data | | |
 
 # Sprint 5: persistent data
 

@@ -27,6 +27,15 @@ public class AtlasStore
 
     public User? GetUser(int userId) => _db.Users.Find(userId);
 
+    /// <summary>Finds a person by email, ignoring upper/lower case.</summary>
+    public User? FindUserByEmail(string email)
+    {
+        var normalized = NormalizeEmail(email);
+        return _db.Users.FirstOrDefault(u => u.Email.ToLower() == normalized);
+    }
+
+    public static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
+
     public Team? GetTeam(int teamId) => _db.Teams.Find(teamId);
 
     public IReadOnlyList<Team> GetTeamsForUser(int userId) =>
@@ -89,6 +98,18 @@ public class AtlasStore
         _db.ActivityEntries.Where(a => a.TeamId == teamId)
             .OrderByDescending(a => a.CreatedAt).ThenByDescending(a => a.ActivityEntryId).Take(count).ToList();
 
+    public IReadOnlyList<TeamInvitation> GetInvitationsForTeam(int teamId) =>
+        _db.TeamInvitations.Where(i => i.TeamId == teamId).OrderBy(i => i.CreatedAt).ToList();
+
+    /// <summary>Open invitations for an email address. Callers must pass the signed-in account's own email.</summary>
+    public IReadOnlyList<TeamInvitation> GetInvitationsForEmail(string email)
+    {
+        var normalized = NormalizeEmail(email);
+        return _db.TeamInvitations.Where(i => i.Email == normalized).OrderBy(i => i.CreatedAt).ToList();
+    }
+
+    public TeamInvitation? GetInvitation(int invitationId) => _db.TeamInvitations.Find(invitationId);
+
     private IQueryable<TaskItem> TasksWithAssignees() => _db.Tasks.Include(t => t.Assignees);
 
     // ---------- Writes that save immediately (the caller needs the new id) ----------
@@ -99,6 +120,15 @@ public class AtlasStore
         _db.Users.Add(user);
         _db.SaveChanges();
         return user;
+    }
+
+    /// <summary>Removes a person who has no account, teams or work yet (used when sign-up fails half way).</summary>
+    public void RemoveNewUser(int userId)
+    {
+        var user = _db.Users.Find(userId);
+        if (user is null) return;
+        _db.Users.Remove(user);
+        _db.SaveChanges();
     }
 
     /// <summary>Creates a team, makes the creator its leader, and adds the default "Tasks" project (FR-2.1).</summary>
@@ -126,6 +156,22 @@ public class AtlasStore
         _db.TeamMembers.Add(member);
         _db.SaveChanges();
         return member;
+    }
+
+    public TeamInvitation AddInvitation(int teamId, string email, int invitedByUserId)
+    {
+        var invitation = new TeamInvitation { TeamId = teamId, Email = NormalizeEmail(email), InvitedByUserId = invitedByUserId };
+        _db.TeamInvitations.Add(invitation);
+        _db.SaveChanges();
+        return invitation;
+    }
+
+    public void RemoveInvitation(int invitationId)
+    {
+        var invitation = _db.TeamInvitations.Find(invitationId);
+        if (invitation is null) return;
+        _db.TeamInvitations.Remove(invitation);
+        _db.SaveChanges();
     }
 
     public void SetManagerPermissions(int teamId, int userId, bool value)

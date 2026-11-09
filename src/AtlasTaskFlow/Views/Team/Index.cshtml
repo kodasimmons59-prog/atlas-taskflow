@@ -1,13 +1,13 @@
-@model IReadOnlyList<TeamMemberView>
+@model TeamPageViewModel
 @inject CurrentUserContext Current
 @{
     ViewData["Title"] = "Team";
-    var isLeader = Current.Membership.Role == TeamRole.Leader;
+    var isLeader = Current.IsLeader;
 }
 <div class="page-head">
     <div>
         <h1>@Current.Team.TeamName</h1>
-        <p class="text-body-secondary mb-0">@Model.Count members. Leaders can give a member manager permissions to create and approve tasks.</p>
+        <p class="text-body-secondary mb-0">@Model.Members.Count members. Leaders can give a member manager permissions to create and approve tasks.</p>
     </div>
 </div>
 <section class="panel">
@@ -17,7 +17,7 @@
                 <tr><th>Name</th><th>Role</th><th>Open tasks</th>@if (isLeader) {<th class="text-end">Permissions</th>}</tr>
             </thead>
             <tbody>
-                @foreach (var m in Model)
+                @foreach (var m in Model.Members)
                 {
                     <tr>
                         <td>
@@ -54,4 +54,30 @@
         </table>
     </div>
 </section>
-<p class="small text-body-secondary mt-3">Email invitations arrive with sign-up in Sprint 6.</p>
+@if (isLeader)
+{
+    <section class="panel mt-3">
+        <div class="panel-head"><h2>Invite someone</h2></div>
+        <p class="small text-body-secondary">They join as a Team Member when they sign in to Atlas with this email address and accept.</p>
+        <form method="post" asp-action="Invite" class="d-flex flex-wrap gap-2 mb-3">
+            <label for="invite-email" class="visually-hidden">Email address</label>
+            <input id="invite-email" name="email" type="email" class="form-control" style="max-width: 22rem" placeholder="name@example.com" required />
+            <button class="btn btn-primary">Send invitation</button>
+        </form>
+        @if (Model.Invitations.Count > 0)
+        {
+            <h3 class="h6">Waiting to join</h3>
+            <ul class="list-unstyled mb-0">
+                @foreach (var inv in Model.Invitations)
+                {
+                    <li class="d-flex align-items-center gap-2 py-1">
+                        <span>@inv.Email</span>
+                        <form method="post" asp-action="CancelInvite" asp-route-id="@inv.TeamInvitationId" class="m-0">
+                            <button class="btn btn-sm btn-link text-danger p-0">Cancel</button>
+                        </form>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+}

@@ -3,7 +3,7 @@
 The single source of truth for **what is planned and what state it is in**. Everything else (design, decisions, owner
 rulings, evidence) lives in its own file; this roadmap points to those files and does not repeat them.
 
-Owner: Koda Simmons · Last updated: 2026-10-25
+Owner: Koda Simmons · Last updated: 2026-11-09
 
 ## §0 How to use this file
 
@@ -32,25 +32,27 @@ Owner: Koda Simmons · Last updated: 2026-10-25
 | 2 | SaaS Product Analysis: Atlas as a multi-tenant, subscription SaaS | Course submission (Assignment 2) |
 | 3 | Product Design Package: personas, journeys, user stories, five-status workflow, Azure architecture | Course submission (Assignment 3) |
 | 4 | Working app built, tested and deployed to Azure App Service; submitted | [PLAN-001](plans/PLAN-001-working-cloud-app.md), git history from `00e7324` |
+| 5 | Data stored in SQL Server with EF Core, proven on LocalDB; submitted | [PLAN-002](plans/PLAN-002-persistent-data.md) |
 
 ## §2 Where we are
 
-Sprint 5. Atlas stores its data in SQL Server through Entity Framework Core, proven on LocalDB on Koda's PC; the live
-site stays on the Sprint 4 build until Azure allows a database ([DR-0009](decisions/DR-0009-live-database-deferred.md)).
-The submission is ready for Koda to accept ([PLAN-002](plans/PLAN-002-persistent-data.md)).
+Sprint 6. Atlas has sign-in with ASP.NET Core Identity, server-side team role rules and team data isolation, with
+security tests passing. The live site will run on SQLite so sign-in works there
+([DR-0010](decisions/DR-0010-sqlite-on-live-site.md)). Waiting on Koda's PC check, the Azure demo password setting and
+the submission ([PLAN-003](plans/PLAN-003-security-and-sign-in.md)).
 
 ## §3 Where we're going
 
-Later sprints, as listed in the course briefs: security (Sprint 6), production readiness (Sprint 7),
-and the Version 1.0 release (Sprint 8). Each is a `HORIZON` plan in §4 until its assignment is released.
+Later sprints, as listed in the course briefs: production readiness (Sprint 7) and the Version 1.0 release
+(Sprint 8). Each is a `HORIZON` plan in §4 until its assignment is released.
 
 ## §4 Plan register
 
 | Plan | Title | Sprint | Status |
 | --- | --- | --- | --- |
 | [PLAN-001](plans/PLAN-001-working-cloud-app.md) | Working cloud application | 4 | `DONE` |
-| [PLAN-002](plans/PLAN-002-persistent-data.md) | Persistent data with EF Core and SQL Server | 5 | `REVIEW` |
-| [PLAN-003](plans/PLAN-003-security-and-sign-in.md) | Sign-in, invitations and authorization | 6 | `HORIZON` |
+| [PLAN-002](plans/PLAN-002-persistent-data.md) | Persistent data with EF Core and SQL Server | 5 | `DONE` |
+| [PLAN-003](plans/PLAN-003-security-and-sign-in.md) | Sign-in, invitations and authorization | 6 | `ACTIVE` |
 | [PLAN-004](plans/PLAN-004-production-readiness.md) | Production readiness | 7 | `HORIZON` |
 | [PLAN-005](plans/PLAN-005-version-1-release.md) | Version 1.0 release | 8 | `HORIZON` |
 

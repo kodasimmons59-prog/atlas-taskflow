@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using AtlasTaskFlow.Models;
 using AtlasTaskFlow.Services;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Mvc.Testing.Handlers;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AtlasTaskFlow.Tests;
@@ -10,19 +11,29 @@ namespace AtlasTaskFlow.Tests;
 /// <summary>
 /// Runs the real app in memory and drives it over HTTP, the same way a browser would.
 /// Each test gets its own new SQL Server database, which the app migrates and fills with sample data on startup.
+/// Unless a test says otherwise, it starts signed in as Sarah Chen, the Brightside Marketing Team Leader.
 /// </summary>
-public partial class AppIntegrationTests : IDisposable
+public partial class AppIntegrationTests : IDisposable, IAsyncLifetime
 {
+    private const string SarahEmail = "sarah@brightside.example";
+    private const string MarcusEmail = "marcus@brightside.example";
+    private const string PriyaEmail = "priya@brightside.example";
+    private const string LeoEmail = "leo@cornerbakery.example";
+
     private readonly TestDatabase _database = new();
     private readonly List<IServiceScope> _scopes = new();
     private WebApplicationFactory<Program> _factory;
     private HttpClient _client;
+    private CookieContainer _cookies = new();
 
     public AppIntegrationTests()
     {
         _factory = AtlasFactory.Create(_database.ConnectionString);
         _client = NewClient();
     }
+
+    public Task InitializeAsync() => SignInAsAsync(SarahEmail);
+    public Task DisposeAsync() => Task.CompletedTask;
 
     public void Dispose()
     {
@@ -31,8 +42,16 @@ public partial class AppIntegrationTests : IDisposable
         _database.Dispose();
     }
 
-    private HttpClient NewClient() =>
-        _factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
+    /// <summary>A fresh browser: its own cookies, following redirects.</summary>
+    private HttpClient NewClient()
+    {
+        _cookies = new CookieContainer();
+        return _factory.CreateDefaultClient(new Uri("https://localhost"), new RedirectHandler(), new CookieContainerHandler(_cookies));
+    }
+
+    /// <summary>A browser that shows redirects instead of following them, sharing the current cookies.</summary>
+    private HttpClient NoRedirectClient() =>
+        _factory.CreateDefaultClient(new Uri("https://localhost"), new CookieContainerHandler(_cookies));
 
     /// <summary>A store with its own fresh DbContext, so assertions read what is really saved in the database.</summary>
     private AtlasStore Store
@@ -70,11 +89,15 @@ public partial class AppIntegrationTests : IDisposable
         return await _client.PostAsync(url, new FormUrlEncodedContent(fields));
     }
 
-    private Task<HttpResponseMessage> ViewAsAsync(string fullName)
+    /// <summary>Signs in through the real sign-in form, in a fresh browser.</summary>
+    private async Task<HttpResponseMessage> SignInAsAsync(string email, string password = AtlasFactory.DemoPassword)
     {
-        var user = Store.GetUsers().Single(u => u.FullName == fullName);
-        return PostFormAsync("/Demo/SwitchUser", new() { ["userId"] = user.UserId.ToString() });
+        _client = NewClient();
+        return await PostFormAsync("/Account/SignIn", new() { ["Email"] = email, ["Password"] = password }, "/Account/SignIn");
     }
+
+    private Task<HttpResponseMessage> ViewAsAsync(string fullName) =>
+        SignInAsAsync(Store.GetUsers().Single(u => u.FullName == fullName).Email);
 
     [Theory]
     [InlineData("/")]
@@ -239,7 +262,7 @@ public partial class AppIntegrationTests : IDisposable
         var brightsideTask = SeededTask("Design spring promo banner");
         var bakery = Store.GetTeamsForUser(Marcus.UserId).Single(t => t.TeamName.StartsWith("Corner"));
         await ViewAsAsync("Marcus Vance");
-        await PostFormAsync("/Demo/SwitchTeam", new() { ["teamId"] = bakery.TeamId.ToString() });
+        await PostFormAsync("/Workspace/Switch", new() { ["teamId"] = bakery.TeamId.ToString() });
 
         var dashboard = await _client.GetStringAsync("/");
         Assert.Contains("Design holiday menu board", dashboard);

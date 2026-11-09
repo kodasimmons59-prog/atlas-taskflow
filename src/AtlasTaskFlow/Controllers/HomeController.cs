@@ -65,11 +65,4 @@ public class HomeController : AtlasController
         if (days.Skip(35).All(d => !d.InMonth)) days = days.Take(35).ToList();
         return new CalendarMonth { Month = first, Days = days };
     }
-
-    [Route("Home/Status/{code:int}")]
-    public IActionResult Status(int code)
-    {
-        Response.StatusCode = code;
-        return View(code);
-    }
 }

@@ -1,4 +1,5 @@
 using AtlasTaskFlow.Models;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace AtlasTaskFlow.Data;
@@ -6,12 +7,23 @@ namespace AtlasTaskFlow.Data;
 /// <summary>
 /// The Entity Framework Core session with the Atlas database. Each DbSet is a table; OnModelCreating sets the keys,
 /// relationships, sizes and indexes so the schema enforces the same rules as the forms.
+///
+/// Sprint 6: it also holds the ASP.NET Core Identity sign-in tables (AspNetUsers and friends) through
+/// <see cref="IdentityUserContext{TUser}"/>. Atlas has no site-wide roles, so the Identity role tables are left out;
+/// a person's role is per team, in TeamMembers.
 /// </summary>
-public class AtlasDbContext : DbContext
+public class AtlasDbContext : IdentityUserContext<AtlasAccount>
 {
     public AtlasDbContext(DbContextOptions<AtlasDbContext> options) : base(options) { }
 
-    public DbSet<User> Users => Set<User>();
+    /// <summary>For <see cref="SqliteAtlasDbContext"/>, which keeps its own set of migrations.</summary>
+    protected AtlasDbContext(DbContextOptions options) : base(options) { }
+
+    /// <summary>Atlas people (profiles). Sign-in accounts are <see cref="IdentityUserContext{TUser}.Users"/>'s
+    /// AspNetUsers table, reached through <see cref="Accounts"/>.</summary>
+    public new DbSet<User> Users => Set<User>();
+    public DbSet<AtlasAccount> Accounts => Set<AtlasAccount>();
+    public DbSet<TeamInvitation> TeamInvitations => Set<TeamInvitation>();
     public DbSet<Team> Teams => Set<Team>();
     public DbSet<TeamMember> TeamMembers => Set<TeamMember>();
     public DbSet<Project> Projects => Set<Project>();
@@ -33,14 +45,35 @@ public class AtlasDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder model)
     {
+        // The Identity tables first, then Atlas's own.
+        base.OnModelCreating(model);
+
         // Users are never deleted in this sprint, and deleting one should never silently remove a team's work,
         // so every foreign key to Users is Restrict.
 
         model.Entity<User>(e =>
         {
+            e.ToTable("Users");
             e.Property(u => u.FullName).HasMaxLength(100).IsRequired();
             e.Property(u => u.Email).HasMaxLength(256).IsRequired();
             e.HasIndex(u => u.Email).IsUnique();
+        });
+
+        // Every account belongs to one Atlas person, and a person has at most one account.
+        model.Entity<AtlasAccount>(e =>
+        {
+            e.HasOne<User>().WithOne().HasForeignKey<AtlasAccount>(a => a.UserId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(a => a.UserId).IsUnique();
+        });
+
+        model.Entity<TeamInvitation>(e =>
+        {
+            e.Property(i => i.Email).HasMaxLength(256).IsRequired();
+            e.HasOne<Team>().WithMany().HasForeignKey(i => i.TeamId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<User>().WithMany().HasForeignKey(i => i.InvitedByUserId).OnDelete(DeleteBehavior.Restrict);
+            // One open invitation per email address per team.
+            e.HasIndex(i => new { i.TeamId, i.Email }).IsUnique();
+            e.HasIndex(i => i.Email);
         });
 
         model.Entity<Team>(e =>

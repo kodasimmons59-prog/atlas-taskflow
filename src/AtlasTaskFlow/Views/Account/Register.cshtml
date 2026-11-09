@@ -1,0 +1,39 @@
+@model RegisterViewModel
+@{
+    ViewData["Title"] = "Create account";
+}
+<div class="auth-wrap">
+    <h1>Create your Atlas account</h1>
+    <p class="text-body-secondary">After signing up, confirm your email, then create a team or accept an invitation.</p>
+    <section class="panel">
+        <form method="post" asp-action="Register" novalidate>
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2" role="alert"></div>
+            <div class="mb-3">
+                <label asp-for="FullName" class="form-label"></label>
+                <input asp-for="FullName" class="form-control" autocomplete="name" autofocus />
+                <span asp-validation-for="FullName" class="text-danger small"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label"></label>
+                <input asp-for="Email" class="form-control" autocomplete="username" />
+                <span asp-validation-for="Email" class="text-danger small"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label"></label>
+                <input asp-for="Password" class="form-control" autocomplete="new-password" aria-describedby="pw-help" />
+                <div id="pw-help" class="form-text">At least 8 characters, with an uppercase letter, a lowercase letter and a number.</div>
+                <span asp-validation-for="Password" class="text-danger small"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="ConfirmPassword" class="form-label"></label>
+                <input asp-for="ConfirmPassword" class="form-control" autocomplete="new-password" />
+                <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+            </div>
+            <button class="btn btn-primary w-100">Create account</button>
+        </form>
+        <p class="small mt-3 mb-0">Already have an account? <a asp-action="SignIn">Sign in</a></p>
+    </section>
+</div>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

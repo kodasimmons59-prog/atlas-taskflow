@@ -1,4 +1,5 @@
 using Microsoft.Data.SqlClient;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -11,13 +12,18 @@ public static class DataErrors
     // NULL in a required column (515), and text too long for its column (2628, 8152).
     private static readonly HashSet<int> ConstraintErrors = new() { 2601, 2627, 547, 515, 2628, 8152 };
 
+    // SQLite (the live site, DR-0010) reports every rejected row as SQLITE_CONSTRAINT.
+    private const int SqliteConstraint = 19;
+
     /// <summary>True when the database rejected the data itself, as opposed to being unreachable.</summary>
     public static bool IsConstraintViolation(Exception ex) =>
-        ex is DbUpdateException && Chain(ex).OfType<SqlException>().Any(s => ConstraintErrors.Contains(s.Number));
+        ex is DbUpdateException
+        && (Chain(ex).OfType<SqlException>().Any(s => ConstraintErrors.Contains(s.Number))
+            || Chain(ex).OfType<SqliteException>().Any(s => s.SqliteErrorCode == SqliteConstraint));
 
     /// <summary>True when the failure came from reaching or talking to the database.</summary>
     public static bool IsDatabaseUnavailable(Exception ex) =>
-        !IsConstraintViolation(ex) && Chain(ex).Any(e => e is SqlException or RetryLimitExceededException or DbUpdateException
+        !IsConstraintViolation(ex) && Chain(ex).Any(e => e is SqlException or SqliteException or RetryLimitExceededException or DbUpdateException
             || (e is InvalidOperationException && e.Message.Contains("transient failure")));
 
     private static IEnumerable<Exception> Chain(Exception ex)

@@ -2,6 +2,30 @@
 
 Notable changes to Atlas TaskFlow and its roadmap, newest first.
 
+## 2026-11-09
+
+### Added (Sprint 6)
+- Sign-up, sign-in, sign-out, email confirmation and password reset with ASP.NET Core Identity: hashed passwords, a
+  password policy, lockout after 5 wrong passwords, and an `HttpOnly`/`Secure`/`SameSite` sign-in cookie (DR-0011).
+- Every page requires sign-in except the account pages, error pages and `/health`.
+- `TeamManager` and `TeamLeader` authorization policies on every manager and leader action, with a "not allowed" (403)
+  page; the workflow service still checks too. Other teams' records answer 404 (DR-0012).
+- Team creation and email-address invitations accepted on a new "My teams" page (DR-0014).
+- Account emails go to a log, and on a developer PC to a developer mailbox page (DR-0013).
+- Sample people get accounts with a demo password from configuration (DR-0015).
+- SQLite support with its own migrations; the live site uses it so sign-in works there (DR-0010, OV-008).
+- Browser security headers (`nosniff`, no framing, referrer policy).
+- 42 new tests (96 in total), and [SECURITY.md](docs/SECURITY.md) with the security test matrix. The smoke test now
+  checks that team pages need sign-in and that the developer mailbox doesn't exist live.
+
+### Changed
+- PLAN-002 is `DONE`: Koda submitted and accepted Assignment 5 (OV-009). PLAN-003 is `ACTIVE` (OV-007).
+- DR-0004 ("Viewing as" switcher) is superseded by DR-0011 and the switcher is removed; DR-0009 is superseded by DR-0010.
+
+### Fixed
+- Signing up with the email of an existing person without an account could have linked to that person; sign-up now
+  refuses it ([dev log](docs/DEV-LOG.md) §6).
+
 ## 2026-10-26
 
 ### Changed

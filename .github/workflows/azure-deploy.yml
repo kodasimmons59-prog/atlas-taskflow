@@ -106,11 +106,16 @@ jobs:
             grep -q "$2" page.html
           }
           check "/health" "Healthy"
-          check "/" "Atlas TaskFlow"
-          check "/Tasks" "Tasks"
-          check "/Projects" "Spring Campaign Launch"
-          check "/Team" "Brightside Marketing"
-          code=$(curl -s -o /dev/null -w "%{http_code}" "$SITE/Tasks/Details/999999")
-          echo "/Tasks/Details/999999 -> $code (expected 404)"
+          check "/Account/SignIn" "Sign in to Atlas"
+          check "/Account/Register" "Create your Atlas account"
+          # Sprint 6: team pages need sign-in, so signed-out requests are sent to the sign-in page.
+          for page in "/" "/Tasks" "/Projects" "/Team" "/Tasks/Details/1"; do
+            location=$(curl -s -o /dev/null -w "%{redirect_url}" "$SITE$page")
+            echo "$page -> $location"
+            echo "$location" | grep -q "/Account/SignIn"
+          done
+          # The developer mailbox must not exist on the live site.
+          code=$(curl -s -o /dev/null -w "%{http_code}" "$SITE/dev/mailbox")
+          echo "/dev/mailbox -> $code (expected 404)"
           test "$code" = "404"
           echo "Smoke test passed for $SITE"

@@ -2,7 +2,7 @@
 @inject AtlasStore Store
 @{
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
-    var unread = Store.GetUnreadCount(Current.User.UserId, Current.Team.TeamId);
+    var unread = Current.HasTeam ? Store.GetUnreadCount(Current.User.UserId, Current.Team.TeamId) : 0;
     string Active(string name) => controller == name ? "active" : "";
 }
 <!DOCTYPE html>
@@ -22,33 +22,15 @@
                     <span class="atlas-logo" aria-hidden="true">A</span> Atlas TaskFlow
                 </a>
 
+                @if (Current.HasTeam)
+                {
                 <div class="d-flex align-items-center gap-2 order-lg-last">
                     <a class="btn btn-icon position-relative" asp-controller="Notifications" asp-action="Index"
                        aria-label="Notifications, @unread unread" title="Notifications">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                         <span id="bell-count" class="bell-count @(unread == 0 ? "d-none" : "")">@unread</span>
                     </a>
-                    <div class="dropdown">
-                        <button class="btn btn-user dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Viewing as">
-                            <span class="avatar">@Current.User.Initials</span>
-                            <span class="d-none d-md-inline">@Current.User.FullName</span>
-                        </button>
-                        <div class="dropdown-menu dropdown-menu-end p-2 shadow-sm">
-                            <div class="dropdown-header px-2">Viewing as (demo until sign-in in Sprint 6)</div>
-                            @foreach (var u in Current.AllUsers)
-                            {
-                                var role = Store.GetTeamsForUser(u.UserId)
-                                    .Select(t => Store.GetMembership(t.TeamId, u.UserId)!)
-                                    .Any(m => m.Role == TeamRole.Leader) ? "Team Leader" : "Team Member";
-                                <form method="post" asp-controller="Demo" asp-action="SwitchUser" class="m-0">
-                                    <input type="hidden" name="userId" value="@u.UserId" />
-                                    <button type="submit" class="dropdown-item rounded d-flex justify-content-between gap-3 @(u.UserId == Current.User.UserId ? "active" : "")">
-                                        <span>@u.FullName</span><small class="text-body-secondary">@role</small>
-                                    </button>
-                                </form>
-                            }
-                        </div>
-                    </div>
+                    <partial name="_AccountMenu" />
                     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
                             aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
                         <span class="navbar-toggler-icon"></span>
@@ -64,21 +46,34 @@
                     </ul>
                     @* Persistent team badge so multi-team users always know which workspace they're in (Sprint 3 risk mitigation). *@
                     <div class="dropdown me-lg-2 my-2 my-lg-0">
-                        <button class="btn team-badge dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"
-                                @(Current.Teams.Count < 2 ? "disabled" : "")>
+                        <button class="btn team-badge dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                             <span class="text-body-secondary small">Team</span> <strong>@Current.Team.TeamName</strong>
                         </button>
                         <div class="dropdown-menu p-2 shadow-sm">
                             @foreach (var t in Current.Teams)
                             {
-                                <form method="post" asp-controller="Demo" asp-action="SwitchTeam" class="m-0">
+                                <form method="post" asp-controller="Workspace" asp-action="Switch" class="m-0">
                                     <input type="hidden" name="teamId" value="@t.TeamId" />
                                     <button type="submit" class="dropdown-item rounded @(t.TeamId == Current.Team.TeamId ? "active" : "")">@t.TeamName</button>
                                 </form>
                             }
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item rounded" asp-controller="Workspace" asp-action="Index">Create or join a team</a>
                         </div>
                     </div>
                 </div>
+                }
+                else if (Current.IsSignedIn)
+                {
+                    <div class="d-flex align-items-center gap-2"><partial name="_AccountMenu" /></div>
+                }
+                else
+                {
+                    <div class="d-flex align-items-center gap-2">
+                        <a class="btn btn-sm btn-outline-secondary" asp-controller="Account" asp-action="SignIn">Sign in</a>
+                        <a class="btn btn-sm btn-primary" asp-controller="Account" asp-action="Register">Create account</a>
+                    </div>
+                }
             </div>
         </nav>
     </header>
@@ -101,14 +96,14 @@
 
     <footer class="atlas-footer">
         <div class="container-xl d-flex flex-wrap justify-content-between gap-2">
-            <span>Atlas TaskFlow · Sprint 5 build</span>
-            <span>Your changes are saved to the Atlas database.</span>
+            <span>Atlas TaskFlow · Sprint 6 build</span>
+            <span>Each team only sees its own work.</span>
         </div>
     </footer>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true" data-summary-url="@Url.Action("Summary", "Notifications")"></script>
+    <script src="~/js/site.js" asp-append-version="true" data-summary-url="@(Current.HasTeam ? Url.Action("Summary", "Notifications") : "")"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
